@@ -1,0 +1,122 @@
+double* tiltsRad = (double*)malloc(numberOfTargets * sizeof(double));
+	double* notchesAnglesRad = (double*)malloc(numberOfTargets * sizeof(double));
+	double nbFbh = numberOfTargets + 1;
+	double nbNotche = numberOfTargets + 1;
+
+	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+	{
+		tiltsRad[iLaw] = asin(sin(targets.tilts[iLaw] / 180 * M_PI) * (coupling.velocity / material.velocity));
+		notchesAnglesRad[iLaw] = targets.notchesAngles[iLaw] / 180 * M_PI;
+		if (angleType == ANGLE_TYPE::TRANSMITED)
+		{
+			notchesAnglesRad[iLaw] = asin(sin(notchesAnglesRad[iLaw]) * (coupling.velocity / material.velocity));
+		}
+	}
+
+	// At index 3 there is an array of utAngle
+	std::vector<double*> fbhBuilderVal = fbhBuilder(tiltsRad, barDiameter / 2);
+	double* xFbh = fbhBuilderVal.at(0);
+	double* yFbh = fbhBuilderVal.at(1);
+	double* zFbh = fbhBuilderVal.at(2);
+
+	std::vector<double*> notcheBuilderVal = notcheBuilder(barDiameter / 2);
+
+	double* xNotche = notcheBuilderVal.at(0);
+	double* yNotche = notcheBuilderVal.at(1);
+	double* zNotche = notcheBuilderVal.at(2);
+	double* utAngleNotche = notcheBuilderVal.at(3);
+	double* focalLengthNotche = notcheBuilderVal.at(4);
+	
+	bool* velocityDefect = (bool*)malloc(nbFbh * nbNotche * sizeof(bool));
+
+	for (int iNbNotche = 0; iNbNotche < nbNotche; iNbNotche++)
+	{
+		velocityDefect[iNbNotche] = true;
+	}
+
+	// if (tiltsRad is empty je sais pas comment on check)
+	for (int i = nbNotche; i < (nbFbh + nbNotche) - 2; i++)
+	{
+		velocityDefect[i] = true;
+	}
+
+	double* zDef = (double*)malloc(numberOfTargets * numberOfTargets * sizeof(double));
+	double* xDef = (double*)malloc(numberOfTargets * numberOfTargets * sizeof(double));
+	double* yDef = (double*)malloc(numberOfTargets * numberOfTargets * sizeof(double));
+
+	zDef = append(zFbh, zNotche, numberOfTargets, numberOfTargets);
+	
+	for (int i = 0; i < numberOfTargets; i++)
+	{
+		xFbh[i] += coupling.height;
+		xNotche[i] += coupling.height;
+	}
+
+	xDef = append(xFbh, xNotche, numberOfTargets, numberOfTargets);
+	yDef = append(yFbh, yNotche, numberOfTargets, numberOfTargets);
+	double maxAngle = maxArray(append(tiltsRad, notchesAnglesRad, numberOfTargets, numberOfTargets), numberOfTargets * 3);
+	double minAngle = minArray(append(tiltsRad, notchesAnglesRad, numberOfTargets, numberOfTargets), numberOfTargets * 3);
+
+	double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
+
+	if (angleType == ANGLE_TYPE::TRANSMITED)
+	{
+		for (int i = 0; i < numberOfTargets; i++)
+		{
+			deflexionAngle[i] = (int)(asin(sin(M_PI - (asin((sin(targets.notchesAngles[i] / 180 * M_PI) / material.velocity) * coupling.velocity))) * ((barDiameter / 2) / ((barDiameter / 2) + coupling.height))) / M_PI * 180);
+		}
+	}
+	else
+	{
+		for (int i = 0; i < numberOfTargets; i++)
+		{
+			deflexionAngle[i] = (int)(asin(sin(M_PI - (targets.notchesAngles[i] / 180 * M_PI)) * ((barDiameter / 2) / ((barDiameter / 2) + coupling.height)))) / M_PI * 180;
+		}
+	}
+
+	double if1;
+	double if2;
+	double if3;
+	double if4;
+
+	if (maxAngle * coupling.height == minAngle * coupling.height)
+	{
+		if (maxAngle * coupling.height >= 0)
+		{
+			if1 = maxAngle * coupling.height;
+			if2 = 0;
+		}
+		else
+		{
+			if1 = 0;
+			if2 = minAngle * coupling.height;
+		}
+	}
+	else
+	{
+		if1 = maxAngle * coupling.height;
+		if2 = minAngle * coupling.height;
+	}
+
+	if (numberOfElements > 1)
+	{
+		if3 = if1;
+		if4 = abs(if2);
+	}
+	else
+	{
+		if3 = resolution;
+		if4 = resolution;
+	}
+
+	double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
+	double minYProbe = minArray(elements.coordinates.y, numberOfElements);
+
+	double add1 = if3 + maxYProbe;
+	double sub1 = minYProbe - if4;
+	double div1 = M_PI / (((barDiameter * M_PI) / 2) / resolution);
+
+	for (int i = 0; i < ((barDiameter * M_PI) / 2) / resolution + 1; i++)
+	{
+		int j;
+	}
