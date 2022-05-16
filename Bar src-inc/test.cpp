@@ -3,6 +3,7 @@
 #include <cmath>
 
 double numberOfTargets = 2;
+double numberOfElements = 32;
 int angleType = 1;
 double couplingVelocity = 1480.0;
 double materialVelocity = 3230;
@@ -11,7 +12,25 @@ double couplingHeight = 70;
 double targetsPositions[2] = {1, 1};
 double targetsTilts[2] = {0, 2};
 double targetsNotchesAngles[2] = {0, 2};
-int defectType = 1;
+int defectType = 0;
+double resolution = 0.1;
+
+// 32 éléments matricielle
+	
+double ang[8] = {0,2,4,6,8,10,12,14};
+double obl[8] = {0,0,0,0,0,0,0,0};
+double foc[8] = {50,50,50,50,50,50,50,50};
+
+double xP[32] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+double yP[32] = {3.15, 3.15, 3.15, 3.15, 2.25, 2.25, 2.25, 2.25, 1.35, 1.35, 1.35, 1.35, 0.45, 0.45, 0.45, 0.45, -0.45, -0.45, -0.45, -0.45, -1.35, -1.35,
+                -1.35, -1.35, -2.25, -2.25, -2.25, -2.25, -3.15, -3.15, -3.15, -3.15};
+
+double zP[32] = {1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45,
+            -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45,-1.35};
+
+
+
 
 using namespace std;
 
@@ -155,6 +174,29 @@ double minArray(double *array, int size)
 }
 
 
+double *append(vector<double> ar1, double* ar2, int len1, int len2)
+{
+	double *arTmp = (double *)malloc(sizeof(double) * (len1 + len2));
+
+	for (int i = 0; i < len1; i++)
+	{
+		arTmp[i] = ar1[i];
+	}
+
+	int cpt = 0;
+
+	for (int i = len1; i < len1 + len2; i++)
+	{
+		arTmp[i] = ar2[cpt];
+		cpt++;
+	}
+
+	// free(ar1);
+
+	return arTmp;
+}
+
+
 void Calculate()
 {
     if (defectType == 0){
@@ -179,6 +221,84 @@ void Calculate()
             xDef[i] = fbhValues[0][i] + couplingHeight;
             yDef[i] = fbhValues[1][i];
         }
+
+        // A copier coller a partir d'ici pour le else.
+
+        double if1;
+        double if2;
+
+        if (tan(maxAngle) * couplingHeight == tan(minAngle) * couplingHeight)
+        {
+            if (tan(maxAngle) * couplingHeight >= 0)
+            {
+                if1 = tan(maxAngle) * couplingHeight;
+                if2 = 0;
+            }
+            else
+            {
+                if1 = 0;
+                if2 = tan(minAngle) * couplingHeight;
+            }
+        }
+        else
+        {
+            if1 = tan(maxAngle) * couplingHeight;
+            if2 = tan(minAngle) * couplingHeight;
+        }
+
+        vector<double> preXIntB;
+        vector<double> preYIntB;
+
+        double minYProbe = minArray(yP, numberOfElements);
+        double maxYProbe = maxArray(yP, numberOfElements);
+        double minZProbe = minArray(zP, numberOfElements);
+        double maxZProbe = maxArray(zP, numberOfElements);
+
+        if (numberOfElements <= 1)
+            if1 = resolution;
+        if (numberOfElements > 1)
+            if2 = abs(if2);
+        else
+            if2 = resolution;
+
+
+        for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
+        {
+            if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
+                >= minYProbe - if2 &&
+                cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
+                < maxYProbe + if1)
+            {
+                preXIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (barDiameter / 2) + (barDiameter / 2) + couplingHeight);
+
+                preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (barDiameter / 2));
+
+    
+            }
+        }
+
+        double* xIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preXIntB.size() 
+        * sizeof(double));
+        double* yIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+
+
+        for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
+        {
+            xIntB = append(preXIntB, xIntB, preXIntB.size(), i * preXIntB.size());
+            yIntB = append(preYIntB, yIntB, preYIntB.size(), i * preYIntB.size());
+
+            for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
+            {
+                zIntB[j] = (resolution * i) + minZProbe;
+            }
+        }
+
+
 
         
     }
