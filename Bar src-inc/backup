@@ -1,122 +1,248 @@
-double* tiltsRad = (double*)malloc(numberOfTargets * sizeof(double));
-	double* notchesAnglesRad = (double*)malloc(numberOfTargets * sizeof(double));
-	double nbFbh = numberOfTargets + 1;
-	double nbNotche = numberOfTargets + 1;
+#include <vector>
+#include <iostream>
+#include <cmath>
+
+double numberOfTargets = 2;
+int angleType = 1;
+double couplingVelocity = 1480.0;
+double materialVelocity = 3230;
+double barDiameter = 404;
+double couplingHeight = 70;
+double targetsPositions[2] = {1, 1};
+double targetsTilts[2] = {0, 2};
+double targetsNotchesAngles[2] = {0, 2};
+int defectType = 1;
+
+using namespace std;
+
+std::vector<double*> fbhBuilder(double barDiameter2)
+{
+	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
+	double* ar = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* utAngle = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* x = (double*)malloc(numberOfTargets * sizeof(double));
+	double* y = (double*)malloc(numberOfTargets * sizeof(double));
+	double* z = (double*)malloc(numberOfTargets * sizeof(double));
 
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
-		tiltsRad[iLaw] = asin(sin(targets.tilts[iLaw] / 180 * M_PI) * (coupling.velocity / material.velocity));
-		notchesAnglesRad[iLaw] = targets.notchesAngles[iLaw] / 180 * M_PI;
-		if (angleType == ANGLE_TYPE::TRANSMITED)
+        ai[iLaw] = asin((couplingVelocity / materialVelocity) * sin(targetsTilts[iLaw] / 180 * M_PI));
+        ar[iLaw] = targetsTilts[iLaw] / 180 * M_PI;
+        
+        
+
+		double a = M_PI - ai[iLaw];
+		double ad = a + asin(sin(a) * (barDiameter2 / (couplingHeight + barDiameter2)));
+
+		double y1 = sin((M_PI - ad)) * barDiameter2;
+		double x0 = cos((M_PI - ad)) * barDiameter2;
+		double x1 = (barDiameter2 - x0);
+
+		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+
+		double distance = sqrt(pow(x2, 2.0) + pow(y2, 2.0) + pow(0, 2.0));
+
+		if (x0 == barDiameter2)
 		{
-			notchesAnglesRad[iLaw] = asin(sin(notchesAnglesRad[iLaw]) * (coupling.velocity / material.velocity));
-		}
-	}
-
-	// At index 3 there is an array of utAngle
-	std::vector<double*> fbhBuilderVal = fbhBuilder(tiltsRad, barDiameter / 2);
-	double* xFbh = fbhBuilderVal.at(0);
-	double* yFbh = fbhBuilderVal.at(1);
-	double* zFbh = fbhBuilderVal.at(2);
-
-	std::vector<double*> notcheBuilderVal = notcheBuilder(barDiameter / 2);
-
-	double* xNotche = notcheBuilderVal.at(0);
-	double* yNotche = notcheBuilderVal.at(1);
-	double* zNotche = notcheBuilderVal.at(2);
-	double* utAngleNotche = notcheBuilderVal.at(3);
-	double* focalLengthNotche = notcheBuilderVal.at(4);
-	
-	bool* velocityDefect = (bool*)malloc(nbFbh * nbNotche * sizeof(bool));
-
-	for (int iNbNotche = 0; iNbNotche < nbNotche; iNbNotche++)
-	{
-		velocityDefect[iNbNotche] = true;
-	}
-
-	// if (tiltsRad is empty je sais pas comment on check)
-	for (int i = nbNotche; i < (nbFbh + nbNotche) - 2; i++)
-	{
-		velocityDefect[i] = true;
-	}
-
-	double* zDef = (double*)malloc(numberOfTargets * numberOfTargets * sizeof(double));
-	double* xDef = (double*)malloc(numberOfTargets * numberOfTargets * sizeof(double));
-	double* yDef = (double*)malloc(numberOfTargets * numberOfTargets * sizeof(double));
-
-	zDef = append(zFbh, zNotche, numberOfTargets, numberOfTargets);
-	
-	for (int i = 0; i < numberOfTargets; i++)
-	{
-		xFbh[i] += coupling.height;
-		xNotche[i] += coupling.height;
-	}
-
-	xDef = append(xFbh, xNotche, numberOfTargets, numberOfTargets);
-	yDef = append(yFbh, yNotche, numberOfTargets, numberOfTargets);
-	double maxAngle = maxArray(append(tiltsRad, notchesAnglesRad, numberOfTargets, numberOfTargets), numberOfTargets * 3);
-	double minAngle = minArray(append(tiltsRad, notchesAnglesRad, numberOfTargets, numberOfTargets), numberOfTargets * 3);
-
-	double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
-
-	if (angleType == ANGLE_TYPE::TRANSMITED)
-	{
-		for (int i = 0; i < numberOfTargets; i++)
-		{
-			deflexionAngle[i] = (int)(asin(sin(M_PI - (asin((sin(targets.notchesAngles[i] / 180 * M_PI) / material.velocity) * coupling.velocity))) * ((barDiameter / 2) / ((barDiameter / 2) + coupling.height))) / M_PI * 180);
-		}
-	}
-	else
-	{
-		for (int i = 0; i < numberOfTargets; i++)
-		{
-			deflexionAngle[i] = (int)(asin(sin(M_PI - (targets.notchesAngles[i] / 180 * M_PI)) * ((barDiameter / 2) / ((barDiameter / 2) + coupling.height)))) / M_PI * 180;
-		}
-	}
-
-	double if1;
-	double if2;
-	double if3;
-	double if4;
-
-	if (maxAngle * coupling.height == minAngle * coupling.height)
-	{
-		if (maxAngle * coupling.height >= 0)
-		{
-			if1 = maxAngle * coupling.height;
-			if2 = 0;
+			x[iLaw] = targetsPositions[iLaw];
+			y[iLaw] = 0;
 		}
 		else
 		{
-			if1 = 0;
-			if2 = minAngle * coupling.height;
+			x[iLaw] = (targetsPositions[iLaw] * (x2 / distance)) + (barDiameter2 - x0);
+			y[iLaw] = (targetsPositions[iLaw] * (y2 / distance)) + y1;
+		}
+
+		z[iLaw] = targetsPositions[iLaw] * (0 / distance);
+
+		utAngle[iLaw] = ar[iLaw] / M_PI * 180;
+	}
+
+	std::vector<double*> values{x, y, z, utAngle};
+
+	return values;
+}
+
+std::vector<double*> notcheBuilder(double barDiameter2)
+{
+	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
+	double* ar = (double*)malloc(numberOfTargets * sizeof(double));
+	double* utAngle = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* x = (double*)malloc(numberOfTargets * sizeof(double));
+	double* y = (double*)malloc(numberOfTargets * sizeof(double));
+	double* z = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* focalLength = (double*)malloc(numberOfTargets * sizeof(double));
+
+	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+	{
+		if (angleType == 1)
+		{
+			ai[iLaw] = asin((couplingVelocity / materialVelocity) * sin(targetsNotchesAngles[iLaw] / 180 * M_PI));
+			ar[iLaw] = targetsNotchesAngles[iLaw] / 180 * M_PI;
+		}
+
+		else if (angleType == 0)
+		{
+			ar[iLaw] = asin((materialVelocity / couplingVelocity) * sin(targetsNotchesAngles[iLaw] / 180 * M_PI));
+			ai[iLaw] = targetsNotchesAngles[iLaw] / 180 * M_PI;
+		}
+		
+		
+
+		double a = M_PI - ai[iLaw];
+		double ad = asin(sin(a) * (barDiameter2 / (couplingHeight + barDiameter2)));
+
+		double b = M_PI - (ad + a);
+		double y1 = sin(b) * barDiameter2;
+		double x0 = cos(b) * barDiameter2;
+		double x1 = barDiameter2 - x0;
+		double d = M_PI - (((M_PI / 2) - b) + ar[iLaw]);
+		double t = M_PI - (2 * ar[iLaw]);
+		double h = (sin(t) / sin(ar[iLaw])) * barDiameter2;
+
+		focalLength[iLaw] = h;
+        utAngle[iLaw] = ar[iLaw] / M_PI * 180;
+
+		double x2 = h * sin(d);
+		double y2 = h * cos(d);
+
+		x[iLaw] = x2 + x1;
+		y[iLaw] = y2 + y1;
+		z[iLaw] = 0;
+	}
+
+
+
+	std::vector<double*> values{x, y, z, utAngle, focalLength};
+
+	return values;
+}
+
+
+double maxArray(double *array, int size)
+{
+	double max = array[0];
+
+	for (int i = 0; i < size; i++)
+	{
+		if (max <= array[i])
+		{
+			max = array[i];
 		}
 	}
-	else
+
+	return max;
+}
+
+double minArray(double *array, int size)
+{
+	double min = array[0];
+
+	for (int i = 0; i < size; i++)
 	{
-		if1 = maxAngle * coupling.height;
-		if2 = minAngle * coupling.height;
+		if (min > array[i])
+		{
+			min = array[i];
+		}
 	}
 
-	if (numberOfElements > 1)
-	{
-		if3 = if1;
-		if4 = abs(if2);
-	}
-	else
-	{
-		if3 = resolution;
-		if4 = resolution;
-	}
+	return min;
+}
 
-	double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
-	double minYProbe = minArray(elements.coordinates.y, numberOfElements);
 
-	double add1 = if3 + maxYProbe;
-	double sub1 = minYProbe - if4;
-	double div1 = M_PI / (((barDiameter * M_PI) / 2) / resolution);
+void Calculate()
+{
+    if (defectType == 0){
+        double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
+        double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
 
-	for (int i = 0; i < ((barDiameter * M_PI) / 2) / resolution + 1; i++)
-	{
-		int j;
-	}
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            asinTiltRad[i] = asin(sin(targetsTilts[i] / 180 * M_PI) * (couplingVelocity / materialVelocity));
+        }
+
+        double maxAngle = maxArray(asinTiltRad, numberOfTargets);
+        double minAngle = minArray(asinTiltRad, numberOfTargets);
+
+        vector<double*> fbhValues = fbhBuilder(barDiameter/2);
+        
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            zDef[i] = fbhValues[2][i];
+            xDef[i] = fbhValues[0][i] + couplingHeight;
+            yDef[i] = fbhValues[1][i];
+        }
+
+        
+    }
+
+    else
+    {
+        double* asinNotcheRad = (double*)malloc(numberOfTargets * sizeof(double));
+        double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            if (angleType == 1)
+            {
+                asinNotcheRad[i] = asin(sin(targetsNotchesAngles[i] / 180 * M_PI) * (couplingVelocity / materialVelocity));
+            }
+            else
+            {
+                asinNotcheRad[i] =targetsNotchesAngles[i] / 180 * M_PI;
+            }
+        }
+
+        double maxAngle = maxArray(asinNotcheRad, numberOfTargets);
+        double minAngle = minArray(asinNotcheRad, numberOfTargets);
+
+        vector<double*> notcheValues = notcheBuilder(barDiameter/2);
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            zDef[i] = notcheValues[2][i];
+            xDef[i] = notcheValues[0][i] + couplingHeight;
+            yDef[i] = notcheValues[1][i];
+        }
+
+        double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            if (angleType == 1)
+            {
+                deflexionAngle[i] = asin((sin(targetsNotchesAngles[i] / 180 * M_PI) / materialVelocity) * couplingVelocity);
+            }
+            else
+            {
+                deflexionAngle[i] = targetsNotchesAngles[i] / 180 * M_PI;
+            }
+
+            deflexionAngle[i] = round(asin(sin(M_PI - deflexionAngle[i]) * ((barDiameter / 2) / ((barDiameter / 2) + couplingHeight)))
+                                / M_PI * 180);
+        }
+
+        
+
+    }
+    
+
+
+}
+
+
+int main()
+{
+    // fbhBuilder(barDiameter/2);
+    // notcheBuilder(barDiameter/2);
+    Calculate();
+}
