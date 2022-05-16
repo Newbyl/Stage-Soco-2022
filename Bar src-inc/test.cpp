@@ -12,7 +12,7 @@ double couplingHeight = 70;
 double targetsPositions[2] = {1, 1};
 double targetsTilts[2] = {0, 2};
 double targetsNotchesAngles[2] = {0, 2};
-int defectType = 1;
+int defectType = 0;
 double resolution = 0.1;
 
 // 32 éléments matricielle
@@ -336,9 +336,10 @@ void Calculate()
 
             double maxMinElems = maxArray(minElems, numberOfElements);
 
-            for (int iElem = iLaw * numberOfElements; iElem < (iLaw + 1) * numberOfElements; iElem++)
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
                 delayLaws[iElem] = maxMinElems - minElems[iElem];
+                cout << delayLaws[iElem] << endl;
             }
 
             free(minElems);
@@ -501,11 +502,12 @@ void Calculate()
                 }
 
                 minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+                
             }
 
             double maxMinElems = maxArray(minElems, numberOfElements);
 
-            for (int iElem = iLaw * numberOfElements; iElem < (iLaw + 1) * numberOfElements; iElem++)
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
                 delayLaws[iElem] = maxMinElems - minElems[iElem];
                 cout << delayLaws[iElem] << endl;
