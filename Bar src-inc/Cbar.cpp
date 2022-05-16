@@ -898,7 +898,6 @@ int Cbar::Calculate()
                 }
 
                 minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
-                
             }
 
             double maxMinElems = maxArray(minElems, numberOfElements);
