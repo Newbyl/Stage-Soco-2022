@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 
+
 int numberOfTargets = 2;
 int numberOfElements = 32;
 int angleType = 1;
@@ -199,7 +200,6 @@ double *append(vector<double> ar1, double* ar2, int len1, int len2)
 
 void Calculate()
 {
-    //double** delayLaws = (double**)malloc(numberOfElements * numberOfTargets * sizeof(double));
     double* delayLaws = (double*)malloc(numberOfTargets * numberOfElements * sizeof(double));
 
     if (defectType == 0){
@@ -339,7 +339,6 @@ void Calculate()
             for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
                 delayLaws[iElem] = maxMinElems - minElems[iElem];
-                cout << delayLaws[iElem] << endl;
             }
 
             free(minElems);
@@ -510,7 +509,6 @@ void Calculate()
             for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
                 delayLaws[iElem] = maxMinElems - minElems[iElem];
-                cout << delayLaws[iElem] << endl;
             }
 
             free(minElems);
@@ -525,5 +523,12 @@ int main()
 {
     // fbhBuilder(barDiameter/2);
     // notcheBuilder(barDiameter/2);
+
+    clock_t timeReq;
+	timeReq = clock();
+
     Calculate();
+
+    timeReq = clock() - timeReq;
+    cout << "temps total : " << ((float)timeReq / CLOCKS_PER_SEC) * 1000 << " ms" << endl;
 }

@@ -95,10 +95,10 @@ private:
     int Calculate();                // Calculates laws and paths
     double maxArray(double *array, int size);
     double minArray(double *array, int size);
-    double *append(double *ar1, double *ar2, int len1, int len2);
+    double* append(std::vector<double> ar1, double* ar2, int len1, int len2);
     int minArrayIndex(const double *array, int size);
-    std::vector<double*> fbhBuilder(double* tiltRad, double barDiameter2);
-    std::vector<double*> notcheBuilder(double barDiameter);
+    std::vector<double*> fbhBuilder(double barDiameter2);
+    std::vector<double*> Cbar::notcheBuilder(double barDiameter2);
 };
 
 

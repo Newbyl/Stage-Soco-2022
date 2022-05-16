@@ -28,7 +28,7 @@ Cbar::Cbar()
 	calculationDone = false;
 
 	resolution = 0.1;
-	double barDiameter;
+	double barDiameter = 404;
     double* barNotchAngle;
 
 	numberOfElements = 0;
@@ -459,24 +459,8 @@ double Cbar::minArray(double *array, int size)
 	return min;
 }
 
-int Cbar::minArrayIndex(const double *array, int size)
-{
-	double min = array[0];
-	int index = 0;
 
-	for (int i = 0; i < size; i++)
-	{
-		if (min > array[i])
-		{
-			min = array[i];
-			index = i;
-		}
-	}
-
-	return index;
-}
-
-double *Cbar::append(double *ar1, double *ar2, int len1, int len2)
+double* Cbar::append(std::vector<double> ar1, double* ar2, int len1, int len2)
 {
 	double *arTmp = (double *)malloc(sizeof(double) * (len1 + len2));
 
@@ -493,12 +477,14 @@ double *Cbar::append(double *ar1, double *ar2, int len1, int len2)
 		cpt++;
 	}
 
-	free(ar1);
+	//free(ar2);
 
 	return arTmp;
 }
 
-std::vector<double*> Cbar::fbhBuilder(double* tiltRad, double barDiameter2)
+
+
+std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 {
 	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
 	double* ar = (double*)malloc(numberOfTargets * sizeof(double));
@@ -511,26 +497,20 @@ std::vector<double*> Cbar::fbhBuilder(double* tiltRad, double barDiameter2)
 
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
-		if (angleType == ANGLE_TYPE::TRANSMITED)
-		{
-			ai[iLaw] = asin((material.velocity / coupling.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
-			ar[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
-		}
+        ai[iLaw] = asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
+        ar[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
+        
+        
 
-		else if (angleType == ANGLE_TYPE::INCIDENT)
-		{
-			ar[iLaw] = asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
-			ai[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
-		}
+		double a = M_PI - ai[iLaw];
+		double ad = a + asin(sin(a) * (barDiameter2 / (coupling.height + barDiameter2)));
 
-		double a = ai[iLaw] - M_PI;
-		double ad = a + (sin(a) * (barDiameter2 / (coupling.height + barDiameter2)));
 		double y1 = sin((M_PI - ad)) * barDiameter2;
 		double x0 = cos((M_PI - ad)) * barDiameter2;
 		double x1 = (barDiameter2 - x0);
 
-		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter);
-		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter);
+		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
 
 		double distance = sqrt(pow(x2, 2.0) + pow(y2, 2.0) + pow(0, 2.0));
 
@@ -547,10 +527,7 @@ std::vector<double*> Cbar::fbhBuilder(double* tiltRad, double barDiameter2)
 
 		z[iLaw] = targets.positions[iLaw] * (0 / distance);
 
-
 		utAngle[iLaw] = ar[iLaw] / M_PI * 180;
-		
-		
 	}
 
 	std::vector<double*> values{x, y, z, utAngle};
@@ -598,6 +575,7 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 		double h = (sin(t) / sin(ar[iLaw])) * barDiameter2;
 
 		focalLength[iLaw] = h;
+        utAngle[iLaw] = ar[iLaw] / M_PI * 180;
 
 		double x2 = h * sin(d);
 		double y2 = h * cos(d);
@@ -607,19 +585,334 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 		z[iLaw] = 0;
 	}
 
+
+
 	std::vector<double*> values{x, y, z, utAngle, focalLength};
 
 	return values;
 }
-
-// nbr de notches = numberoftargets
 
 
 
 
 int Cbar::Calculate()
 {
-	
+	using namespace std;
+
+	double* delayLaws = (double*)malloc(numberOfTargets * numberOfElements * sizeof(double));
+
+    if (defectType == DEFECT_TYPE::FBH){
+        double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
+        double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            asinTiltRad[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
+        }
+
+        double maxAngle = maxArray(asinTiltRad, numberOfTargets);
+        double minAngle = minArray(asinTiltRad, numberOfTargets);
+
+        vector<double*> fbhValues = fbhBuilder(barDiameter/2);
+        
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            zDef[i] = fbhValues[2][i];
+            xDef[i] = fbhValues[0][i] + coupling.height;
+            yDef[i] = fbhValues[1][i];
+        }
+
+        double if1;
+        double if2;
+
+        if (tan(maxAngle) * coupling.height == tan(minAngle) * coupling.height)
+        {
+            if (tan(maxAngle) * coupling.height >= 0)
+            {
+                if1 = tan(maxAngle) * coupling.height;
+                if2 = 0;
+            }
+            else
+            {
+                if1 = 0;
+                if2 = tan(minAngle) * coupling.height;
+            }
+        }
+        else
+        {
+            if1 = tan(maxAngle) * coupling.height;
+            if2 = tan(minAngle) * coupling.height;
+        }
+
+        vector<double> preXIntB;
+        vector<double> preYIntB;
+
+        double minYProbe = minArray(elements.coordinates.y, numberOfElements);
+        double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
+        double minZProbe = minArray(elements.coordinates.z, numberOfElements);
+        double maxZProbe = maxArray(elements.coordinates.z, numberOfElements);
+
+        if (numberOfElements <= 1)
+            if1 = resolution;
+        if (numberOfElements > 1)
+            if2 = abs(if2);
+        else
+            if2 = resolution;
+
+
+        for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
+        {
+            if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
+                >= minYProbe - if2 &&
+                cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
+                < maxYProbe + if1)
+            {
+                preXIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (barDiameter / 2) + (barDiameter / 2) + coupling.height);
+
+                preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (barDiameter / 2));
+
+    
+            }
+        }
+
+        double* xIntB;
+        double* yIntB;
+        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+
+
+
+        for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
+        {
+            xIntB = append(preXIntB, xIntB, preXIntB.size(), i * preXIntB.size());
+            yIntB = append(preYIntB, yIntB, preYIntB.size(), i * preYIntB.size());
+
+            for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
+            {
+                zIntB[j] = (resolution * i) + minZProbe;
+            }
+        }
+
+        for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+        {
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            * sizeof(double));
+
+            for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+            {
+                distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
+                + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
+                + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+            }
+
+            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+                double* addDist = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+
+
+                for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+                {
+                    distIntProbe[iIntPoint] = sqrt(pow(elements.coordinates.x[iElem] - xIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.y[iElem] - yIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.z[iElem] - zIntB[iIntPoint], 2.0)) / (coupling.velocity / 1000);
+
+                    addDist[iIntPoint] = distIntProbe[iIntPoint] + distDefInt[iIntPoint];
+                }
+
+                minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+            }
+
+            double maxMinElems = maxArray(minElems, numberOfElements);
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                delayLaws[iElem] = maxMinElems - minElems[iElem];
+            }
+
+            free(minElems);
+        }
+        
+    }
+
+    else
+    {
+        double* asinNotcheRad = (double*)malloc(numberOfTargets * sizeof(double));
+        double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            if (angleType == ANGLE_TYPE::TRANSMITED)
+            {
+                asinNotcheRad[i] = asin(sin(targets.notchesAngles[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
+            }
+            else
+            {
+                asinNotcheRad[i] = targets.notchesAngles[i] / 180 * M_PI;
+            }
+        }
+
+        double maxAngle = maxArray(asinNotcheRad, numberOfTargets);
+        double minAngle = minArray(asinNotcheRad, numberOfTargets);
+
+        vector<double*> notcheValues = notcheBuilder(barDiameter/2);
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            zDef[i] = notcheValues[2][i];
+            xDef[i] = notcheValues[0][i] + coupling.height;
+            yDef[i] = notcheValues[1][i];
+        }
+
+        double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            if (angleType == ANGLE_TYPE::TRANSMITED)
+            {
+                deflexionAngle[i] = asin((sin(targets.notchesAngles[i] / 180 * M_PI) / material.velocity) * coupling.velocity);
+            }
+            else
+            {
+                deflexionAngle[i] = targets.notchesAngles[i] / 180 * M_PI;
+            }
+
+            deflexionAngle[i] = round(asin(sin(M_PI - deflexionAngle[i]) * ((barDiameter / 2) / ((barDiameter / 2) + coupling.height)))
+                                / M_PI * 180);
+        }
+
+        
+
+        double if1;
+        double if2;
+
+        if (tan(maxAngle) * coupling.height == tan(minAngle) * coupling.height)
+        {
+            if (tan(maxAngle) * coupling.height >= 0)
+            {
+                if1 = tan(maxAngle) * coupling.height;
+                if2 = 0;
+            }
+            else
+            {
+                if1 = 0;
+                if2 = tan(minAngle) * coupling.height;
+            }
+        }
+        else
+        {
+            if1 = tan(maxAngle) * coupling.height;
+            if2 = tan(minAngle) * coupling.height;
+        }
+
+        vector<double> preXIntB;
+        vector<double> preYIntB;
+
+        double minYProbe = minArray(elements.coordinates.y, numberOfElements);
+        double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
+        double minZProbe = minArray(elements.coordinates.z, numberOfElements);
+        double maxZProbe = maxArray(elements.coordinates.z, numberOfElements);
+
+        if (numberOfElements <= 1)
+            if1 = resolution;
+        if (numberOfElements > 1)
+            if2 = abs(if2);
+        else
+            if2 = resolution;
+
+
+        for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
+        {
+            if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
+                >= minYProbe - if2 &&
+                cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
+                < maxYProbe + if1)
+            {
+                preXIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (barDiameter / 2) + (barDiameter / 2) + coupling.height);
+
+                preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (barDiameter / 2));
+
+    
+            }
+        }
+
+        double* xIntB;
+        double* yIntB;
+        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+
+
+
+        for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
+        {
+            xIntB = append(preXIntB, xIntB, preXIntB.size(), i * preXIntB.size());
+            yIntB = append(preYIntB, yIntB, preYIntB.size(), i * preYIntB.size());
+
+            for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
+            {
+                zIntB[j] = (resolution * i) + minZProbe;
+            }
+        }
+
+        for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+        {
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            * sizeof(double));
+
+            for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+            {
+                distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
+                + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
+                + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+            }
+
+            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+                double* addDist = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+
+
+                for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+                {
+                    distIntProbe[iIntPoint] = sqrt(pow(elements.coordinates.x[iElem] - xIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.y[iElem] - yIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.z[iElem] - zIntB[iIntPoint], 2.0)) / (coupling.velocity / 1000);
+
+                    addDist[iIntPoint] = distIntProbe[iIntPoint] + distDefInt[iIntPoint];
+                }
+
+                minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+                
+            }
+
+            double maxMinElems = maxArray(minElems, numberOfElements);
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                delayLaws[iElem] = maxMinElems - minElems[iElem];
+            }
+
+            free(minElems);
+        }
+
+
+    }
 
 
 	return PLUGIN_NO_ERROR;
