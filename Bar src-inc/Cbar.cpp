@@ -82,6 +82,8 @@ int Cbar::Close()
 		free(targets.tilts);
 	if (targets.positions != NULL)
 		free(targets.positions);
+	if(targets.notchesAngles != NULL)
+		free(targets.notchesAngles);
 
 	for (int iTarget = 0; iTarget < numberOfTargets; iTarget++)
 	{
@@ -552,7 +554,7 @@ double* Cbar::append(std::vector<double> ar1, double* ar2, int len1, int len2)
 		cpt++;
 	}
 
-	//free(ar2);
+	free(ar2);
 
 	return arTmp;
 }
@@ -602,8 +604,12 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 
 		z[iLaw] = targets.positions[iLaw] * (0 / distance);
 
+
 		utAngle[iLaw] = ar[iLaw] / M_PI * 180;
 	}
+
+	free(ai);
+	free(ar);
 
 	std::vector<double*> values{x, y, z, utAngle};
 
@@ -651,6 +657,8 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 
 		focalLength[iLaw] = h;
         utAngle[iLaw] = ar[iLaw] / M_PI * 180;
+		
+		
 
 		double x2 = h * sin(d);
 		double y2 = h * cos(d);
@@ -660,22 +668,14 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 		z[iLaw] = 0;
 	}
 
-
+	free(ai);
+	free(ar);
 
 	std::vector<double*> values{x, y, z, utAngle, focalLength};
 
 	return values;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//																													  //
-//																													  //
-//												Calculate() ICI																			  //
-//																													  //
-//																													  //
-//																													  //
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int Cbar::Calculate()
 {
@@ -714,6 +714,8 @@ int Cbar::Calculate()
 
         double maxAngle = maxArray(asinTiltRad, numberOfTargets);
         double minAngle = minArray(asinTiltRad, numberOfTargets);
+
+		free(asinTiltRad);
 
         vector<double*> fbhValues = fbhBuilder(barDiameter/2);
         
@@ -776,8 +778,8 @@ int Cbar::Calculate()
             }
         }
 
-        double* xIntB;
-        double* yIntB;
+        double* xIntB = (double*)malloc(sizeof(double));
+        double* yIntB = (double*)malloc(sizeof(double));
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
@@ -817,9 +819,6 @@ int Cbar::Calculate()
 			{
 				compar[i] = INFINITY;
 			}
-
-
-            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
 
 			// changement de la boucle ici
             for (int i = 0; i < nbGroupInt; i++)
@@ -865,6 +864,7 @@ int Cbar::Calculate()
 							compar[probeElem] = addTimeElemIntDef;
 						}
 
+					free(distIntProbe);
 				}
             }
 			// Maximum element of delayLaw array.
@@ -878,7 +878,18 @@ int Cbar::Calculate()
 
 			// Release of the memory taken by delayLaw array.
 			free(compar);
+
+			free(distDefInt);
         }
+
+		free(xDef);
+		free(yDef);
+		free(zDef);
+
+		free(xIntB);
+		free(yIntB);
+		free(zIntB);
+	
         
     }
 
@@ -996,8 +1007,8 @@ int Cbar::Calculate()
             }
         }
 
-        double* xIntB;
-        double* yIntB;
+        double* xIntB = (double*)malloc(sizeof(double));
+        double* yIntB = (double*)malloc(sizeof(double));;
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
@@ -1035,9 +1046,6 @@ int Cbar::Calculate()
 			{
 				compar[i] = INFINITY;
 			}
-
-
-            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
 
 			// changement de la boucle ici
             for (int i = 0; i < nbGroupInt; i++)
@@ -1096,7 +1104,16 @@ int Cbar::Calculate()
 
 			// Release of the memory taken by delayLaw array.
 			free(compar);
-        }
+			free(distDefInt);
+		}
+
+		free(xDef);
+		free(yDef);
+		free(zDef);
+
+		free(xIntB);
+		free(yIntB);
+		free(zIntB);
 
 
     }
