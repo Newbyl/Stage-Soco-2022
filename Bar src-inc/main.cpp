@@ -26,6 +26,9 @@ int main()
 	double matcel = 3230.0;
 	double ch = 0;
 	int nbPtRemar = 3;
+	int aglTy = 0;
+	int defTy = 0;
+	double barDiam = 404;
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
 	double *xRemarq = (double *)malloc(3 * nbLaw * sizeof(double));

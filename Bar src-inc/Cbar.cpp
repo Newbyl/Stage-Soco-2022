@@ -28,8 +28,7 @@ Cbar::Cbar()
 	calculationDone = false;
 
 	resolution = 0.1;
-	double barDiameter = 404;
-    double* barNotchAngle;
+	barDiameter = 0;
 
 	numberOfElements = 0;
 
@@ -43,15 +42,15 @@ Cbar::Cbar()
 	coupling.height = 0.0;
 
 	angleType = ANGLE_TYPE::INCIDENT;
+	defectType = DEFECT_TYPE::FBH;
 
 	numberOfTargets = 0;
 
 	targets.tilts = NULL;
 	targets.positions = NULL;
+	targets.notchesAngles = NULL;
 	laws = NULL;
 	paths = NULL;
-
-	utAngle = 1;
 }
 
 Cbar::~Cbar()
@@ -108,9 +107,16 @@ int Cbar::Set(const char *param_name, int unit, int *value)
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
 
-	if (strcmpi(param_name, "Flow.PositionType") == 0)
+	if (strcmpi(param_name, "Angle_Type") == 0)
 	{
 		angleType = (ANGLE_TYPE)*value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Defect_Type") == 0)
+	{
+		defectType = (DEFECT_TYPE)*value;
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -145,9 +151,30 @@ int Cbar::Set(const char *param_name, int unit, double *value)
 		return PLUGIN_NO_ERROR;
 	}
 
-	if (strcmpi(param_name, "Flow.PositionType") == 0)
+	if (strcmpi(param_name, "Angle_Type") == 0)
 	{
 		angleType = (ANGLE_TYPE)*value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Defect_Type") == 0)
+	{
+		defectType = (DEFECT_TYPE)*value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Resolution") == 0)
+	{
+		resolution = *value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "BarDiameter") == 0)
+	{
+		barDiameter = Unit::ChangeUnit(*value, unit, UNIT_mm);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -234,6 +261,16 @@ int Cbar::Set(const char *param_name, int unit, int *dim1, double *value)
 			targets.tilts = (double *)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
 			targets.tilts[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_rad);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Targets.NotchesAngles") == 0)
+	{
+		if (targets.notchesAngles == NULL)
+			targets.notchesAngles = (double *)malloc(*dim1 * sizeof(double));
+		for (int iTarget = 0; iTarget < *dim1; iTarget++)
+			targets.notchesAngles[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_rad);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -599,8 +636,6 @@ int Cbar::Calculate()
 {
 	using namespace std;
 
-	double* delayLaws = (double*)malloc(numberOfTargets * numberOfElements * sizeof(double));
-
     if (defectType == DEFECT_TYPE::FBH){
         double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
@@ -735,7 +770,7 @@ int Cbar::Calculate()
 
             for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
-                delayLaws[iElem] = maxMinElems - minElems[iElem];
+                laws[iLaw].delays[iElem] = maxMinElems - minElems[iElem];
             }
 
             free(minElems);
@@ -904,7 +939,7 @@ int Cbar::Calculate()
 
             for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
-                delayLaws[iElem] = maxMinElems - minElems[iElem];
+                laws[iLaw].delays[iElem] = maxMinElems - minElems[iElem];
             }
 
             free(minElems);

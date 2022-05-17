@@ -2,7 +2,7 @@
 #define CBAR_H__
 
 #include "IPlugin.h"
-#include <tuple>
+#include <vector>
 
 
 class Cbar : public IPlugin
@@ -41,7 +41,6 @@ private:
     
     double resolution;              // The resolution for interface points, default = 0.1mm
     double barDiameter;             // Diameter of the bar
-    int utAngle;                    // Material or incident (1 or 0)
     
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
