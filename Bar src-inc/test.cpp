@@ -7,7 +7,7 @@ int numberOfTargets = 2;
 int numberOfElements = 32;
 int angleType = 1;
 double couplingVelocity = 1480.0;
-double materialVelocity = 3230;
+double materialVelocity = 3230.0;
 double barDiameter = 404;
 double couplingHeight = 70;
 double targetsPositions[2] = {1, 1};
@@ -215,6 +215,7 @@ void Calculate()
         double maxAngle = maxArray(asinTiltRad, numberOfTargets);
         double minAngle = minArray(asinTiltRad, numberOfTargets);
 
+
         vector<double*> fbhValues = fbhBuilder(barDiameter/2);
         
         for (int i = 0; i < numberOfTargets; i++)
@@ -286,7 +287,7 @@ void Calculate()
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
-
+        cout << maxZProbe - minZProbe << endl;
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
@@ -296,6 +297,7 @@ void Calculate()
             for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
             {
                 zIntB[j] = (resolution * i) + minZProbe;
+                //cout << zIntB[j] << endl;
             }
         }
 
@@ -309,6 +311,7 @@ void Calculate()
                 distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
                 + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (materialVelocity / 1000);
+                //cout << distDefInt[iIntPoint] << endl;
             }
 
             double* minElems = (double*)malloc(numberOfElements * sizeof(double));

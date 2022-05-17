@@ -9,6 +9,7 @@ int main()
 	// 32 éléments matricielle
 	
 	double tilts[2] = {0,2};
+	double notch[2] = {0,2};
 	double pos[2] = {1, 1};
 
 	double xP[32] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -21,10 +22,10 @@ int main()
 
 
 
-	int nbElem = 64;
+	int nbElem = 32;
 	int nbLaw = 2;
 	double matcel = 3230.0;
-	double ch = 0;
+	double ch = 70;
 	int nbPtRemar = 3;
 	int aglTy = 0;
 	int defTy = 0;
@@ -38,15 +39,17 @@ int main()
 	Cbar cbar;
 	cbar.Open();
 
-	cbar.Set("Elements.coordinates.x", UNIT_mm, &nbElem, yP);
-	cbar.Set("Elements.coordinates.y", UNIT_mm, &nbElem, xP);
-	cbar.Set("Elements.coordinates.z", UNIT_mm, &nbElem, zP);
+	cbar.Set("Elements.coordinates.x", UNIT_mm, &nbElem, xP);
+	cbar.Set("Elements.coordinates.y", UNIT_mm, &nbElem, yP);
+	cbar.Set("Elements.Coordinates.z", UNIT_mm, &nbElem, zP);
 	
 	cbar.Set("Targets.Tilts", UNIT_deg, &nbLaw, tilts);
+	cbar.Set("Targets.NotchesAngles", UNIT_deg, &nbLaw, notch);
 	cbar.Set("Targets.Positions", UNIT_mm, &nbLaw, pos);
 	cbar.Set("Material.Velocity", UNIT_mps, &matcel);
 
 	cbar.Set("Coupling.Height", UNIT_mm, &ch);
+	cbar.Set("BarDiameter", UNIT_mm, &barDiam);
 
 	clock_t timeReq;
 	timeReq = clock();

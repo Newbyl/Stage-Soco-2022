@@ -6,17 +6,19 @@ CLI := cli
 TEST := test
 
 all : $(CLI)
+test : $(TEST)
 
-$(CLI) : unit.o IPlugin.o Cplate.o main.o
+$(CLI) : unit.o IPlugin.o Cbar.o main.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(TEST)
+$(TEST) : test.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.o : %.cpp
 	clear
 	$(CC) $(CFLAGS) -o $@ -c $<
 	
 clean :
-	rm *.o $(CLI)
+	rm *.o $(CLI) $(TEST)
 	clear
 	

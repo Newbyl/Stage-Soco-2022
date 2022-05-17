@@ -38,7 +38,7 @@ Cbar::Cbar()
 
 	material.velocity = 3900.0;
 
-	coupling.velocity = 1500.0;
+	coupling.velocity = 1480.0;
 	coupling.height = 0.0;
 
 	angleType = ANGLE_TYPE::INCIDENT;
@@ -243,6 +243,7 @@ int Cbar::Set(const char *param_name, int unit, int *dim1, double *value)
 		{													 // Yes. Release previous arrays.
 			free(targets.tilts);
 			free(targets.positions);
+			free(targets.notchesAngles);
 			free(laws);
 			free(paths);
 			targets.tilts = NULL;
@@ -260,7 +261,7 @@ int Cbar::Set(const char *param_name, int unit, int *dim1, double *value)
 		if (targets.tilts == NULL)
 			targets.tilts = (double *)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
-			targets.tilts[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_rad);
+			targets.tilts[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_deg);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -270,7 +271,7 @@ int Cbar::Set(const char *param_name, int unit, int *dim1, double *value)
 		if (targets.notchesAngles == NULL)
 			targets.notchesAngles = (double *)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
-			targets.notchesAngles[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_rad);
+			targets.notchesAngles[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_deg);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -696,7 +697,6 @@ int Cbar::Calculate()
         else
             if2 = resolution;
 
-
         for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
         {
             if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
@@ -709,8 +709,6 @@ int Cbar::Calculate()
 
                 preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2));
-
-    
             }
         }
 
@@ -718,7 +716,6 @@ int Cbar::Calculate()
         double* yIntB;
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
-
 
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
@@ -732,10 +729,12 @@ int Cbar::Calculate()
             }
         }
 
+
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
             double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
             * sizeof(double));
+
 
             for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
             {

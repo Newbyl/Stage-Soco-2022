@@ -97,7 +97,7 @@ private:
     double* append(std::vector<double> ar1, double* ar2, int len1, int len2);
     int minArrayIndex(const double *array, int size);
     std::vector<double*> fbhBuilder(double barDiameter2);
-    std::vector<double*> Cbar::notcheBuilder(double barDiameter2);
+    std::vector<double*> notcheBuilder(double barDiameter2);
 };
 
 
@@ -116,6 +116,7 @@ private:
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
+/*
 // Finally export a creation and deletion function (which you can get using LoadLibrary/GetProcAddress)
 EXPORT IPlugin* CreatePluginInstance()
 {
@@ -125,6 +126,6 @@ EXPORT void ReleasePluginInstance(IPlugin* p)
 {
     p->Close();
 }
-
+*/
 
 #endif /* CBAR_H__ */
