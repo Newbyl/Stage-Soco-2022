@@ -739,9 +739,21 @@ int Cbar::Calculate()
 
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
+			// CHANGEMENT ICI
+			
+			int nbGroup = 4;
+			double pitch = 0.9;
+			double nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
+
+			double *compar = (double *)malloc(numberOfElements * sizeof(double));
+
+			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / (nbGroupInt)) - 1;
+
+			double addTimeElemIntDef = 0;
+
+
             double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
             * sizeof(double));
-
 
             for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
             {
@@ -750,37 +762,71 @@ int Cbar::Calculate()
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
             }
 
+			for (int i = 0; i < numberOfElements; i++)
+			{
+				compar[i] = INFINITY;
+			}
+
+
             double* minElems = (double*)malloc(numberOfElements * sizeof(double));
 
-            for (int iElem = 0; iElem < numberOfElements; iElem++)
+			// changement de la boucle ici
+            for (int i = 0; i < nbGroupInt; i++)
             {
-                double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
-                * sizeof(double));
-                double* addDist = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
-                * sizeof(double));
+				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
+				{
+					double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+					* sizeof(double));
 
+					distIntProbe[0] = sqrt(pow(elements.coordinates.x[i] - xIntB[0], 2.0) 
+						+ pow(elements.coordinates.y[i] - yIntB[0], 2.0) 
+						+ pow(elements.coordinates.z[i] - zIntB[0], 2.0)) / (coupling.velocity / 1000);
 
-                for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
-                {
-                    distIntProbe[iIntPoint] = sqrt(pow(elements.coordinates.x[iElem] - xIntB[iIntPoint], 2.0) 
-                    + pow(elements.coordinates.y[iElem] - yIntB[iIntPoint], 2.0) 
-                    + pow(elements.coordinates.z[iElem] - zIntB[iIntPoint], 2.0)) / (coupling.velocity / 1000);
+					// Indexes and length for the while loop below.
+					int start = (decalage * i);
+					int end = (decalage * (i + 1)) - 1;
+					int mid = (int)((end - start) / 2);
+					int length = 0;
 
-                    addDist[iIntPoint] = distIntProbe[iIntPoint] + distDefInt[iIntPoint];
-					
-                }
+					while (length != -1)
+					{
+						length = end - start;
+						mid = start + (int)(length / 2);
 
-                minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+						// Check if the previous time taken by the US is lower than the current.
+						if (distDefInt[mid - 1] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[mid - 1], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[mid - 1], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[mid - 1], 2.0))) / (coupling.velocity / 1000) <
+							distDefInt[mid] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[mid], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[mid], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[mid], 2.0))) / (coupling.velocity / 1000))
+						{
+							end = mid - 1;
+						}
+
+						// If the previous time taken by the US is bigger than the current we enter in this case
+						else
+						{
+							start = mid + 1;
+						}
+					}
+
+					addTimeElemIntDef = distDefInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[end], 2.0))) / (coupling.velocity / 1000);
+
+					if (compar[probeElem] > addTimeElemIntDef)
+						{
+							compar[probeElem] = addTimeElemIntDef;
+						}
+
+				}
             }
+			// Maximum element of delayLaw array.
+			double maxDelayLaw = maxArray(compar, numberOfElements);
+			// For loop that push the delay law for each element of the probe
+			for (int iElem = 0; iElem < numberOfElements; iElem++)
+			{
 
-            double maxMinElems = maxArray(minElems, numberOfElements);
+				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
+			}
 
-            for (int iElem = 0; iElem < numberOfElements; iElem++)
-            {
-                laws[iLaw].delays[iElem] = maxMinElems - minElems[iElem];
-            }
-
-            free(minElems);
+			// Release of the memory taken by delayLaw array.
+			free(compar);
         }
         
     }
@@ -904,14 +950,6 @@ int Cbar::Calculate()
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
-		// CHANGEMENT ICI 
-
-		int nbGroup = 4;
-		double pitch = 0.9;
-		double nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
-
-
-
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
             xIntB = append(preXIntB, xIntB, preXIntB.size(), i * preXIntB.size());
@@ -923,13 +961,17 @@ int Cbar::Calculate()
             }
         }
 
+		int nbGroup = 4;
+		double pitch = 0.9;
+		double nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
+
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
 			// CHANGEMENT ICI
+
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
 			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / (nbGroupInt));
-			//cout << decalage << endl;
 
 			double addTimeElemIntDef = 0;
 

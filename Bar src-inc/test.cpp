@@ -5,7 +5,7 @@
 
 int numberOfTargets = 2;
 int numberOfElements = 32;
-int angleType = 1;
+int angleType = 0;
 double couplingVelocity = 1480.0;
 double materialVelocity = 3230.0;
 double barDiameter = 404;
@@ -288,7 +288,6 @@ void Calculate()
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
-        cout << maxZProbe - minZProbe << endl;
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
@@ -342,6 +341,7 @@ void Calculate()
             for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
                 delayLaws[iElem] = maxMinElems - minElems[iElem];
+                cout << delayLaws[iElem] << endl;
             }
 
             free(minElems);
