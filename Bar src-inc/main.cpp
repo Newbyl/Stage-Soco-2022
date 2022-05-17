@@ -20,6 +20,7 @@ int main()
 	double zP[32] = {1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45,
 				-0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45,-1.35};
 
+	int i[32] = {1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4};
 
 
 	int nbElem = 32;
@@ -42,6 +43,7 @@ int main()
 	cbar.Set("Elements.coordinates.x", UNIT_mm, &nbElem, xP);
 	cbar.Set("Elements.coordinates.y", UNIT_mm, &nbElem, yP);
 	cbar.Set("Elements.Coordinates.z", UNIT_mm, &nbElem, zP);
+	cbar.Set("Elements.coordinates.i", UNIT_mm, &nbElem, i);
 	
 	cbar.Set("Targets.Tilts", UNIT_deg, &nbLaw, tilts);
 	cbar.Set("Targets.NotchesAngles", UNIT_deg, &nbLaw, notch);

@@ -29,12 +29,14 @@ Cbar::Cbar()
 
 	resolution = 0.1;
 	barDiameter = 0;
+	pitch = 0.9;
 
 	numberOfElements = 0;
 
 	elements.coordinates.x = NULL;
 	elements.coordinates.y = NULL;
 	elements.coordinates.z = NULL;
+	elements.coordinates.i = NULL;
 
 	material.velocity = 3900.0;
 
@@ -98,6 +100,8 @@ int Cbar::Close()
 		free(elements.coordinates.y);
 	if (elements.coordinates.z != NULL)
 		free(elements.coordinates.z);
+	if (elements.coordinates.i != NULL)
+		free(elements.coordinates.i);
 
 	return PLUGIN_NO_ERROR;
 }
@@ -179,12 +183,45 @@ int Cbar::Set(const char *param_name, int unit, double *value)
 		return PLUGIN_NO_ERROR;
 	}
 
+	if (strcmpi(param_name, "pitch") == 0)
+	{
+		pitch = Unit::ChangeUnit(*value, unit, UNIT_mm);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
 int Cbar::Set(const char *param_name, int unit, char *value) { return PLUGIN_UNKNOWN_PARAMETER; }
 
-int Cbar::Set(const char *param_name, int unit, int *dim1, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cbar::Set(const char *param_name, int unit, int *dim1, int *value) {
+	if (!opened)
+		return PLUGIN_NOT_OPEN;
+
+	if (_strnicmp(param_name, "Elements.Coordinates", strlen("Elements.Coordinates")) == 0)
+	{
+		if (numberOfElements > 0 && *dim1 != numberOfElements) // Do we have to resize arrays of coordinates?
+		{													   // Yes. Release previous arrays.
+			free(elements.coordinates.i);
+			elements.coordinates.i = NULL;
+			numberOfElements = *dim1;
+		}
+		if (numberOfElements == 0)
+			numberOfElements = *dim1;
+	}
+
+	if (strcmpi(param_name, "Elements.Coordinates.i") == 0)
+	{
+		if (elements.coordinates.i == NULL)
+			elements.coordinates.i = (double *)malloc(*dim1 * sizeof(double));
+		for (int iElement = 0; iElement < *dim1; iElement++)
+			elements.coordinates.i[iElement] = value[iElement];
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	return PLUGIN_UNKNOWN_PARAMETER; 
+	}
 
 int Cbar::Set(const char *param_name, int unit, int *dim1, double *value)
 {
@@ -644,6 +681,26 @@ int Cbar::Calculate()
 {
 	using namespace std;
 
+	// For loop that find the number of different "groups" that we have in element.coordinates.i array.
+	int nbGroup = 1;
+	if (elements.coordinates.i != NULL)
+	{
+		nbGroup = elements.coordinates.i[0];
+		for (size_t i = 1; i < numberOfElements; i++)
+		{
+			if (nbGroup < elements.coordinates.i[i])
+			{
+				nbGroup = elements.coordinates.i[i];
+			}
+		}
+	}
+	
+	// variable that calculate the number of "interface groups".
+	int nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
+
+
+
+
     if (defectType == DEFECT_TYPE::FBH){
         double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
@@ -739,12 +796,6 @@ int Cbar::Calculate()
 
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
-			// CHANGEMENT ICI
-			
-			int nbGroup = 4;
-			double pitch = 0.9;
-			double nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
-
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
 			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / (nbGroupInt)) - 1;
@@ -961,14 +1012,8 @@ int Cbar::Calculate()
             }
         }
 
-		int nbGroup = 4;
-		double pitch = 0.9;
-		double nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
-
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
-			// CHANGEMENT ICI
-
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
 			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / (nbGroupInt));

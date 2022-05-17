@@ -41,6 +41,7 @@ private:
     
     double resolution;              // The resolution for interface points, default = 0.1mm.
     double barDiameter;             // Diameter of the bar in millimeters.
+    double pitch;
     
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
@@ -48,6 +49,7 @@ private:
             double* x;              // in millimeters
             double* y;              //
             double* z;              //
+            double* i;
         }coordinates;
     }elements;
 
