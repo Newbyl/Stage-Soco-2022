@@ -39,15 +39,15 @@ private:
     bool calculationDone;           // Indicates if the calculation is already done.
     int numberOfElements;           // Number of elements to calculate the laws.
     
-    double resolution;              // The resolution for interface points, default = 0.1mm
-    double barDiameter;             // Diameter of the bar
+    double resolution;              // The resolution for interface points, default = 0.1mm.
+    double barDiameter;             // Diameter of the bar in millimeters.
     
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
         struct COORDINATES {
             double* x;              // in millimeters
             double* y;              //
-            double* z;
+            double* z;              //
         }coordinates;
     }elements;
 
@@ -60,12 +60,12 @@ private:
         double height;              // in millimeters
     }coupling;
 
-    enum class ANGLE_TYPE {         // 
+    enum class ANGLE_TYPE {         // Angle type of notches (0 = INCIDENT, 1 = TRANSMITED)
         INCIDENT,
         TRANSMITED
     }angleType;
 
-    enum class DEFECT_TYPE {         // 
+    enum class DEFECT_TYPE {         // Type of defect you want to see (0 = NOTCHE, 1 = FBH)
         NOTCHE,
         FBH
     }defectType;
@@ -92,10 +92,9 @@ private:
     PPATH paths;                    // An array of remarkable points (source, interface, defect) for each target
 
     int Calculate();                // Calculates laws and paths
-    double maxArray(double *array, int size);
-    double minArray(double *array, int size);
-    double* append(std::vector<double> ar1, double* ar2, int len1, int len2);
-    int minArrayIndex(const double *array, int size);
+    double maxArray(double *array, int size);   // return the max element of an array
+    double minArray(double *array, int size);   // return the max element of an array
+    double* append(std::vector<double> ar1, double* ar2, int len1, int len2);   // Add array1 at the end of array2
     std::vector<double*> fbhBuilder(double barDiameter2);
     std::vector<double*> notcheBuilder(double barDiameter2);
 };

@@ -13,7 +13,7 @@ double couplingHeight = 70;
 double targetsPositions[2] = {1, 1};
 double targetsTilts[2] = {0, 2};
 double targetsNotchesAngles[2] = {0, 2};
-int defectType = 0;
+int defectType = 1;
 double resolution = 0.1;
 
 // 32 éléments matricielle
@@ -201,7 +201,8 @@ void Calculate()
 {
     double* delayLaws = (double*)malloc(numberOfTargets * numberOfElements * sizeof(double));
 
-    if (defectType == 0){
+    if (defectType == 0)
+    {
         double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
@@ -511,6 +512,7 @@ void Calculate()
             for (int iElem = 0; iElem < numberOfElements; iElem++)
             {
                 delayLaws[iElem] = maxMinElems - minElems[iElem];
+                cout << delayLaws[iElem] << endl;
             }
 
             free(minElems);

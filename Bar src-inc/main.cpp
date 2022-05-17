@@ -47,6 +47,8 @@ int main()
 	cbar.Set("Targets.NotchesAngles", UNIT_deg, &nbLaw, notch);
 	cbar.Set("Targets.Positions", UNIT_mm, &nbLaw, pos);
 	cbar.Set("Material.Velocity", UNIT_mps, &matcel);
+	cbar.Set("Defect_Type", UNIT_mm, &defTy);
+	cbar.Set("Angle_Type", UNIT_mm, &aglTy);
 
 	cbar.Set("Coupling.Height", UNIT_mm, &ch);
 	cbar.Set("BarDiameter", UNIT_mm, &barDiam);
