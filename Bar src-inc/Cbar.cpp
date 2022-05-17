@@ -631,7 +631,14 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 }
 
 
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//																													  //
+//																													  //
+//												Calculate() ICI																			  //
+//																													  //
+//																													  //
+//																													  //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int Cbar::Calculate()
 {
@@ -777,6 +784,15 @@ int Cbar::Calculate()
         
     }
 
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//																													  //
+		//													TODO:supprimer après											  //
+		//													Else ici													  	  //
+		//																													  //
+		//																													  //
+		//																													  //
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     else
     {
         double* asinNotcheRad = (double*)malloc(numberOfTargets * sizeof(double));
@@ -886,8 +902,6 @@ int Cbar::Calculate()
         double* yIntB;
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
-
-
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
