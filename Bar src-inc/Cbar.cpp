@@ -539,7 +539,7 @@ double Cbar::minArray(double *array, int size)
 
 double* Cbar::append(std::vector<double> ar1, double* ar2, int len1, int len2)
 {
-	double *arTmp = (double *)malloc(sizeof(double) * (len1 + len2));
+	double *arTmp = (double *)malloc(sizeof(double) * (len1 + len2 + 1));
 
 	for (int i = 0; i < len1; i++)
 	{
@@ -923,6 +923,8 @@ int Cbar::Calculate()
 
         double maxAngle = maxArray(asinNotcheRad, numberOfTargets);
         double minAngle = minArray(asinNotcheRad, numberOfTargets);
+		
+		free(asinNotcheRad);
 
         vector<double*> notcheValues = notcheBuilder(barDiameter/2);
 
@@ -932,6 +934,10 @@ int Cbar::Calculate()
             xDef[i] = notcheValues[0][i] + coupling.height;
             yDef[i] = notcheValues[1][i];
         }
+
+		for (int i =0; i < notcheValues.size(); i++){
+			free(notcheValues[i]);
+		}
 
         double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
 
@@ -1007,9 +1013,11 @@ int Cbar::Calculate()
             }
         }
 
-        double* xIntB = (double*)malloc(sizeof(double));
-        double* yIntB = (double*)malloc(sizeof(double));;
-        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        double* xIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+        double* yIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1 + 1) * preYIntB.size() 
         * sizeof(double));
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
@@ -1032,7 +1040,7 @@ int Cbar::Calculate()
 			double addTimeElemIntDef = 0;
 
 
-            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1 + 1) * preYIntB.size() 
             * sizeof(double));
 
             for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
@@ -1052,12 +1060,13 @@ int Cbar::Calculate()
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
-					double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+					double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1 + 1) * preYIntB.size()
 					* sizeof(double));
 
 					distIntProbe[0] = sqrt(pow(elements.coordinates.x[i] - xIntB[0], 2.0) 
 						+ pow(elements.coordinates.y[i] - yIntB[0], 2.0) 
 						+ pow(elements.coordinates.z[i] - zIntB[0], 2.0)) / (coupling.velocity / 1000);
+			
 
 					// Indexes and length for the while loop below.
 					int start = (decalage * i);
@@ -1090,6 +1099,8 @@ int Cbar::Calculate()
 						{
 							compar[probeElem] = addTimeElemIntDef;
 						}
+					
+					free(distIntProbe);
 
 				}
             }
@@ -1110,6 +1121,8 @@ int Cbar::Calculate()
 		free(xDef);
 		free(yDef);
 		free(zDef);
+
+		free(deflexionAngle);
 
 		free(xIntB);
 		free(yIntB);
