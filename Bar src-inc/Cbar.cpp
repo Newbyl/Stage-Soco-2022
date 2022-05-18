@@ -837,6 +837,7 @@ int Cbar::Calculate()
 						+ pow(elements.coordinates.y[i] - yIntB[0], 2.0) 
 						+ pow(elements.coordinates.z[i] - zIntB[0], 2.0)) / (coupling.velocity / 1000);
 
+
 					// Indexes and length for the while loop below.
 					int start = (decalage * i);
 					int end = (decalage * (i + 1)) - 1;
@@ -897,15 +898,6 @@ int Cbar::Calculate()
 	
         
     }
-
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//																													  //
-		//													TODO:supprimer après											  //
-		//													Else ici													  	  //
-		//																													  //
-		//																													  //
-		//																													  //
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     else
     {

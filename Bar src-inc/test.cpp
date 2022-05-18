@@ -17,7 +17,7 @@ int defectType = 1;
 double resolution = 0.1;
 
 // 32 éléments matricielle
-	
+
 double ang[8] = {0,2,4,6,8,10,12,14};
 double foc[8] = {50,50,50,50,50,50,50,50};
 
