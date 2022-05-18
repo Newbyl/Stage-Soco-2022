@@ -7,8 +7,10 @@ OPTFLAGS := -O3 -ffast-math
 CLI := cli
 TEST := test
 
-all : $(CLI)
+all : $(CLI) $(TEST)
+
 test : $(TEST)
+cli : $(CLI)
 
 $(CLI) : unit.o IPlugin.o Cbar.o main.o
 	$(CC) $(CFLAGS) $(OPTFLAGS) -o $@ $^
@@ -23,4 +25,8 @@ $(TEST) : test.o
 clean :
 	rm *.o $(CLI) $(TEST)
 	clear
+
+run :
+	make cli
+	./cli
 	
