@@ -726,6 +726,11 @@ int Cbar::Calculate()
             yDef[i] = fbhValues[1][i];
         }
 
+		for (int i = 0; i < fbhValues.size(); i++)
+		{
+			free(fbhValues[i]);
+		}
+
         double if1;
         double if2;
 
@@ -1040,8 +1045,7 @@ int Cbar::Calculate()
 			double addTimeElemIntDef = 0;
 
 
-            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1 + 1) * preYIntB.size() 
-            * sizeof(double));
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1 + 1) * preYIntB.size() * sizeof(double));
 
             for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
             {

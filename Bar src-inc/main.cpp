@@ -29,7 +29,7 @@ int main()
 	double ch = 70;
 	int nbPtRemar = 3;
 	int aglTy = 0;
-	int defTy = 0;
+	int defTy = 1;
 	double barDiam = 404;
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
