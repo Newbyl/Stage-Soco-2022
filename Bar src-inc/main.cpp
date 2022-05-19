@@ -9,8 +9,8 @@ int main()
 	// 32 éléments matricielle
 	/*
 	double tilts[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-	double notch[16] = {0, 2, 4, 6};
-	double pos[16] = {50, 50, 50, 50};
+	double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 
 	double xP[32] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
@@ -313,8 +313,8 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	double matcel = 3230.0;
 	double ch = 70;
 	int nbPtRemar = 3;
-	int aglTy = 1;
-	int defTy = 0;
+	int aglTy = 0;
+	int defTy = 1;
 	int proTy = 2;
 	double barDiam = 404;
 
@@ -380,9 +380,10 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	cout << "temps total : " << ((float)timeReq / CLOCKS_PER_SEC) * 1000 << " ms" << endl;
 
 	cbar.Close();
-
-	free(yRemarq);
-	free(xRemarq);
-	free(zRemarq);
+	
+	//free(yRemarq);
+	//free(xRemarq);
+	//free(zRemarq);
+	
 	free(la);
 }

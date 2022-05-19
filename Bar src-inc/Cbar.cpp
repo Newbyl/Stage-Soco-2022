@@ -710,6 +710,7 @@ int Cbar::Calculate()
 	// for the sectorial probe.
 	int cstMult;
 	int cstSub;
+	int cstSub2;
 
 	// Switch that assign the right value to constant for all different probe types (0 = linear / 1 = matrix / 2 = sectorial).
 	switch (probeType)
@@ -717,22 +718,26 @@ int Cbar::Calculate()
 	case PROBE_TYPE::LINEAR :
 		cstMult = 1;
 		cstSub = 0;
+		cstSub2 = 1;
 		break;
 
 	case PROBE_TYPE::MATRIX :
 		cstMult = 1;
 		cstSub = 0;
+		cstSub2 = 1;
 		break;
 
 	case PROBE_TYPE::SECTORIAL :
 		// In the sectorial case we have (2*n)-1 more "interface groups" than linear and matrix.
 		cstMult = 2;
 		cstSub = 1;
+		cstSub2 = 0;
 		break;
 
 	default:
 		cstMult = 1;
 		cstSub = 0;
+		cstSub2 = 1;
 		break;
 	}
 
@@ -843,7 +848,7 @@ int Cbar::Calculate()
         {
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
-			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / (nbGroupInt)) - 1;
+			int decalage = ((int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / ((nbGroupInt * cstMult) - cstSub))) - cstSub2;
 
 			double addTimeElemIntDef = 0;
 
@@ -858,13 +863,13 @@ int Cbar::Calculate()
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
             }
 
-			for (int i = 0; i < numberOfElements; i++)
+			for (int i = 0; i < (numberOfElements * cstMult) - cstSub; i++)
 			{
 				compar[i] = INFINITY;
 			}
 
 			// changement de la boucle ici
-            for (int i = 0; i < nbGroupInt; i++)
+            for (int i = 0; i < (nbGroupInt * cstMult) - cstSub; i++)
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
@@ -925,15 +930,15 @@ int Cbar::Calculate()
 
 			free(distDefInt);
         }
-
+		
 		free(xDef);
 		free(yDef);
 		free(zDef);
-
+		/*
 		free(xIntB);
 		free(yIntB);
 		free(zIntB);
-	
+		*/
         
     }
 
