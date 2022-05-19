@@ -45,6 +45,7 @@ Cbar::Cbar()
 
 	angleType = ANGLE_TYPE::INCIDENT;
 	defectType = DEFECT_TYPE::FBH;
+	probeType = PROBE_TYPE::LINEAR;
 
 	numberOfTargets = 0;
 
@@ -123,6 +124,13 @@ int Cbar::Set(const char *param_name, int unit, int *value)
 	if (strcmpi(param_name, "Defect_Type") == 0)
 	{
 		defectType = (DEFECT_TYPE)*value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Probe_Type") == 0)
+	{
+		probeType = (PROBE_TYPE)*value;
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -698,6 +706,36 @@ int Cbar::Calculate()
 	// variable that calculate the number of "interface groups".
 	int nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
 
+	// Declaration of constant that will permit to multiplicate by 2 and substract by 1 the number of "interface groups"
+	// for the sectorial probe.
+	int cstMult;
+	int cstSub;
+
+	// Switch that assign the right value to constant for all different probe types (0 = linear / 1 = matrix / 2 = sectorial).
+	switch (probeType)
+	{
+	case PROBE_TYPE::LINEAR :
+		cstMult = 1;
+		cstSub = 0;
+		break;
+
+	case PROBE_TYPE::MATRIX :
+		cstMult = 1;
+		cstSub = 0;
+		break;
+
+	case PROBE_TYPE::SECTORIAL :
+		// In the sectorial case we have (2*n)-1 more "interface groups" than linear and matrix.
+		cstMult = 2;
+		cstSub = 1;
+		break;
+
+	default:
+		cstMult = 1;
+		cstSub = 0;
+		break;
+	}
+
 
 
 
@@ -1031,7 +1069,7 @@ int Cbar::Calculate()
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
 			// changer decalage données brut
-			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / ((nbGroupInt * 2) - 1));
+			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / ((nbGroupInt * cstMult) - cstSub));
 
 			double addTimeElemIntDef = 0;
 
@@ -1045,7 +1083,6 @@ int Cbar::Calculate()
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
             }
 
-			//cout << (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() << endl;
 
 			for (int i = 0; i < numberOfElements; i++)
 			{
@@ -1053,7 +1090,7 @@ int Cbar::Calculate()
 			}
 
 			// changement de la boucle ici
-            for (int i = 0; i < (nbGroupInt * 2) - 1; i++)
+            for (int i = 0; i < (nbGroupInt * cstMult) - cstSub; i++)
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
@@ -1090,7 +1127,6 @@ int Cbar::Calculate()
 						}
 					}
 
-					//cout << "end  : " << end << endl;
 
 					addTimeElemIntDef = distDefInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[end], 2.0))) / (coupling.velocity / 1000);
 

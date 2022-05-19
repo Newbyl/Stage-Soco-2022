@@ -315,6 +315,7 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	int nbPtRemar = 3;
 	int aglTy = 1;
 	int defTy = 0;
+	int proTy = 2;
 	double barDiam = 404;
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
@@ -334,8 +335,10 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	cbar.Set("Targets.NotchesAngles", UNIT_deg, &nbLaw, notch);
 	cbar.Set("Targets.Positions", UNIT_mm, &nbLaw, pos);
 	cbar.Set("Material.Velocity", UNIT_mps, &matcel);
+
 	cbar.Set("Defect_Type", UNIT_mm, &defTy);
 	cbar.Set("Angle_Type", UNIT_mm, &aglTy);
+	cbar.Set("Probe_Type", UNIT_mm, &proTy);
 
 	cbar.Set("Coupling.Height", UNIT_mm, &ch);
 	cbar.Set("BarDiameter", UNIT_mm, &barDiam);

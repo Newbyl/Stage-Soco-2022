@@ -41,7 +41,13 @@ private:
     
     double resolution;              // The resolution for interface points, default = 0.1mm.
     double barDiameter;             // Diameter of the bar in millimeters.
-    double pitch;
+    double pitch;                   // Distance between elements of the probe
+
+    enum class PROBE_TYPE {         // Type of the probe used to provide the right delay laws values
+        LINEAR,                     // (used for the optimized version)
+        MATRIX,
+        SECTORIAL
+    }probeType;
     
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
