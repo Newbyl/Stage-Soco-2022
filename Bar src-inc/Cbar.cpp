@@ -1005,8 +1005,6 @@ int Cbar::Calculate()
 
                 preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2));
-
-    
             }
         }
 
@@ -1032,7 +1030,8 @@ int Cbar::Calculate()
         {
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
-			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / (nbGroupInt));
+			// changer decalage données brut
+			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / ((nbGroupInt * 2) - 1));
 
 			double addTimeElemIntDef = 0;
 
@@ -1046,13 +1045,15 @@ int Cbar::Calculate()
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
             }
 
+			//cout << (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() << endl;
+
 			for (int i = 0; i < numberOfElements; i++)
 			{
 				compar[i] = INFINITY;
 			}
 
 			// changement de la boucle ici
-            for (int i = 0; i < nbGroupInt; i++)
+            for (int i = 0; i < (nbGroupInt * 2) - 1; i++)
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
@@ -1088,6 +1089,8 @@ int Cbar::Calculate()
 							start = mid + 1;
 						}
 					}
+
+					//cout << "end  : " << end << endl;
 
 					addTimeElemIntDef = distDefInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[end], 2.0))) / (coupling.velocity / 1000);
 
