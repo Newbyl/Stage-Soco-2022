@@ -2,6 +2,7 @@
 #define CPLATE_H__
 
 #include "IPlugin.h"
+#include <iostream>
 
 class Cplate : public IPlugin
 {

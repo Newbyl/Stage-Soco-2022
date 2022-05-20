@@ -22,7 +22,7 @@ int main()
 	// 32 éléments matricielle
 	
 	double ang[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-	double obl[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	double obl[16] = {90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
 	double foc[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 
 	double xP[32] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -472,7 +472,7 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	cplate.Set("Elements.coordinates.x", UNIT_mm, &nbElem, yP);
 	cplate.Set("Elements.coordinates.y", UNIT_mm, &nbElem, xP);
 	cplate.Set("Elements.coordinates.z", UNIT_mm, &nbElem, zP);
-	cplate.Set("Elements.coordinates.i", UNIT_mm, &nbElem, i);
+	//cplate.Set("Elements.coordinates.i", UNIT_mm, &nbElem, i);
 	
 	cplate.Set("Targets.Tilts", UNIT_deg, &nbLaw, ang);
 	cplate.Set("Targets.Skews", UNIT_deg, &nbLaw, obl);
@@ -496,7 +496,7 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	
 	for (int i = 0; i < nbLaw * nbElem; i++)
 	{
-		cout << la[i] << endl;
+		//cout << la[i] << endl;
 	}
 	
 	/*

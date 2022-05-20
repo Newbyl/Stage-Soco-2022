@@ -4,6 +4,7 @@
 #include "error_codes.h"
 #include "cmath"
 
+
 // TODO : Compile with /O2 /fp:fast compilation option for windows (MSCV compiler).
 // TODO : Compile with -O3 -ffast-math flags for linux / mac (g++ / clang++ compiler).
 // These options / flags are used for performance gain (known bug : if the values are completely false, remove the flags, compile, put the flags again and then recompile.
@@ -32,7 +33,7 @@ Cplate::Cplate()
 	coupling.velocity = 1500.0;
 	coupling.height = 0.0;
 
-	positionType = FLOW_POSITION_TYPE::PATH;
+	positionType = FLOW_POSITION_TYPE::DEPTH;
 
 	numberOfTargets = 0;
 
@@ -551,7 +552,7 @@ int Cplate::minArrayIndex(const double* array, int size)
 
 	return index;
 }
-
+using namespace std;
 
 
 int Cplate::Calculate()
@@ -647,7 +648,7 @@ int Cplate::Calculate()
 			// For loop that compute the distance between probe element and focus point and push it into distances array.
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
-				distances[iElem] = sqrt(pow((cos(targets.tilts[iLaw]) * positionProjection[iLaw]) - elements.coordinates.y[iElem], 2.0) + pow((cos(targets.skews[iLaw]) * (sin(targets.tilts[iLaw]) * positionProjection[iLaw])) - elements.coordinates.x[iElem], 2.0) + pow(((targets.skews[iLaw] * sin(targets.tilts[iLaw])) * sin(targets.skews[iLaw])) - elements.coordinates.z[iElem], 2.0));
+				distances[iElem] = sqrt(pow((cos(targets.tilts[iLaw]) * positionProjection[iLaw]) - elements.coordinates.y[iElem], 2.0) + pow((cos(targets.skews[iLaw]) * (sin(targets.tilts[iLaw]) * positionProjection[iLaw])) - elements.coordinates.x[iElem], 2.0) + pow(((sin(targets.tilts[iLaw]) * positionProjection[iLaw]) * sin(targets.skews[iLaw])) - elements.coordinates.z[iElem], 2.0));
 			}
 
 			// Maximum value of distances array.
@@ -783,6 +784,7 @@ int Cplate::Calculate()
 		double interestZoneSize1 = maxArray(array1, cptAr1) - minArray(array2, cptAr2); // Size of the interest zone on the XY axis.
 		double interestZoneSize2 = maxArray(array3, cptAr3) - minArray(array4, cptAr4); // Size of the interest zone on the YZ axis.
 
+
 		// Release of the memory taken by array1 and array3.
 		free(array1);
 		free(array3);
@@ -830,6 +832,7 @@ int Cplate::Calculate()
 		zIntP = append(zIntP, zIntPTmp, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
 
 		free(zIntPTmp);
+		
 
 		// Release of the memory taken by array4, arrayCouplingHeight and arrayPreYInterfaceP.
 		free(array4);
@@ -946,7 +949,9 @@ int Cplate::Calculate()
 				for (int j = 0; j < ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)); j++)
 				{
 					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
+					
 				}
+				
 
 				double addTimeElemIntFbh = 0; // Addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole.
 
@@ -958,8 +963,12 @@ int Cplate::Calculate()
 					delay[i] = INFINITY;
 				}
 
+				using namespace std;
+
 				// This variable gives us the offset between each parabola of values of interface points.
 				double offset = (((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)) / ((nbGroupInt * cstMult) - cstSub)) - 1;
+
+				//std::cout << ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)) << std::endl;
 
 				// For loop that iterate number of "groups" of interface times to get the minimum value between all interface points.
 				for (int i = 0; i < nbGroupInt * cstMult; i++)
@@ -998,6 +1007,8 @@ int Cplate::Calculate()
 							}
 						}
 
+						
+
 						// The addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole
 						// and convert it to mm per seconds.
 						addTimeElemIntFbh = timeFbhInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[end], 2.0))) / (coupling.velocity / 1000);
@@ -1015,6 +1026,7 @@ int Cplate::Calculate()
 						}
 					}
 				}
+				
 
 				// Variable that gives us the norm of the vector between the selected interface point and the flat bottom hole.
 				// double focusPointDistance = (sqrt(pow(xFbhP[iLaw] - xIntP[endBis], 2.0) + pow(yFbhP[iLaw] - yIntP[endBis], 2.0) + pow(zFbhP[iLaw] - zIntP[endBis], 2.0)));
