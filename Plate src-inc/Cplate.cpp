@@ -2,17 +2,12 @@
 #include "Cplate.h"
 #include "unit.h"
 #include "error_codes.h"
-#include <cstddef>
-#include <string.h>
-#include "framework.h"
-#include <cmath>
-#include <iostream>
-#define _CRT_SECURE_NO_WARNINGS
+#include "cmath"
 
-#define strcmpi(x, y) strcasecmp((x), (y))
-#define _strnicmp(x, y, z) strncasecmp((x), (y), (z))
-
-// Ajouter flag /fp:fast et /O2 a la compilation.
+// TODO : Compile with /O2 /fp:fast compilation option for windows (MSCV compiler).
+// TODO : Compile with -O3 -ffast-math flags for linux / mac (g++ / clang++ compiler).
+// These options / flags are used for performance gain (known bug : if the values are completely false, remove the flags, compile, put the flags again and then recompile.
+// This bug was experienced on macOS Monterey with clang++ compiler and i dont know why this happened).
 
 Cplate::Cplate()
 {
@@ -22,7 +17,7 @@ Cplate::Cplate()
 	calculationDone = false;
 
 	resolution = 0.1;
-	pitch = 0.9;
+	pitch = 1.0;
 	probeType = 0;
 
 	numberOfElements = 0;
@@ -101,7 +96,7 @@ int Cplate::Close()
 	return PLUGIN_NO_ERROR;
 }
 
-int Cplate::Set(const char *param_name, int unit, int *value)
+int Cplate::Set(const char* param_name, int unit, int* value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -113,7 +108,7 @@ int Cplate::Set(const char *param_name, int unit, int *value)
 		return PLUGIN_NO_ERROR;
 	}
 
-	if (strcmpi(param_name, "probeType") == 0)
+	if (strcmpi(param_name, "ProbeType") == 0)
 	{
 		probeType = *value;
 		calculationDone = false;
@@ -123,7 +118,7 @@ int Cplate::Set(const char *param_name, int unit, int *value)
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
 
-int Cplate::Set(const char *param_name, int unit, double *value)
+int Cplate::Set(const char* param_name, int unit, double* value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -149,14 +144,7 @@ int Cplate::Set(const char *param_name, int unit, double *value)
 		return PLUGIN_NO_ERROR;
 	}
 
-	if (strcmpi(param_name, "Flow.PositionType") == 0)
-	{
-		positionType = (FLOW_POSITION_TYPE)*value;
-		calculationDone = false;
-		return PLUGIN_NO_ERROR;
-	}
-
-	if (strcmpi(param_name, "pitch") == 0)
+	if (strcmpi(param_name, "Pitch") == 0)
 	{
 		pitch = Unit::ChangeUnit(*value, unit, UNIT_mm);
 		calculationDone = false;
@@ -165,39 +153,8 @@ int Cplate::Set(const char *param_name, int unit, double *value)
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
-int Cplate::Set(const char *param_name, int unit, char *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-
-int Cplate::Set(const char *param_name, int unit, int *dim1, int *value)
-{
-	if (!opened)
-		return PLUGIN_NOT_OPEN;
-
-	if (_strnicmp(param_name, "Elements.Coordinates", strlen("Elements.Coordinates")) == 0)
-	{
-		if (numberOfElements > 0 && *dim1 != numberOfElements) // Do we have to resize arrays of coordinates?
-		{													   // Yes. Release previous arrays.
-			free(elements.coordinates.i);
-			elements.coordinates.i = NULL;
-			numberOfElements = *dim1;
-		}
-		if (numberOfElements == 0)
-			numberOfElements = *dim1;
-	}
-
-	if (strcmpi(param_name, "Elements.Coordinates.i") == 0)
-	{
-		if (elements.coordinates.i == NULL)
-			elements.coordinates.i = (double *)malloc(*dim1 * sizeof(double));
-		for (int iElement = 0; iElement < *dim1; iElement++)
-			elements.coordinates.i[iElement] = value[iElement];
-		calculationDone = false;
-		return PLUGIN_NO_ERROR;
-	}
-
-	return PLUGIN_UNKNOWN_PARAMETER;
-}
-
-int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
+int Cplate::Set(const char* param_name, int unit, char* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Set(const char* param_name, int unit, int* dim1, int* value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -209,9 +166,46 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 			free(elements.coordinates.x);
 			free(elements.coordinates.y);
 			free(elements.coordinates.z);
+			free(elements.coordinates.i);
 			elements.coordinates.x = NULL;
 			elements.coordinates.y = NULL;
 			elements.coordinates.z = NULL;
+			elements.coordinates.i = NULL;
+			numberOfElements = *dim1;
+		}
+		if (numberOfElements == 0)
+			numberOfElements = *dim1;
+	}
+
+	if (strcmpi(param_name, "Elements.Coordinates.i") == 0)
+	{
+		if (elements.coordinates.i == NULL)
+			elements.coordinates.i = (double*)malloc(*dim1 * sizeof(double));
+		for (int iElement = 0; iElement < *dim1; iElement++)
+			elements.coordinates.i[iElement] = value[iElement];
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	return PLUGIN_UNKNOWN_PARAMETER;
+}
+int Cplate::Set(const char* param_name, int unit, int* dim1, double* value)
+{
+	if (!opened)
+		return PLUGIN_NOT_OPEN;
+
+	if (strnicmp(param_name, "Elements.Coordinates", strlen("Elements.Coordinates")) == 0)
+	{
+		if (numberOfElements > 0 && *dim1 != numberOfElements) // Do we have to resize arrays of coordinates?
+		{													   // Yes. Release previous arrays.
+			free(elements.coordinates.x);
+			free(elements.coordinates.y);
+			free(elements.coordinates.z);
+			free(elements.coordinates.i);
+			elements.coordinates.x = NULL;
+			elements.coordinates.y = NULL;
+			elements.coordinates.z = NULL;
+			elements.coordinates.i = NULL;
 			numberOfElements = *dim1;
 		}
 		if (numberOfElements == 0)
@@ -221,7 +215,7 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	if (strcmpi(param_name, "Elements.Coordinates.x") == 0)
 	{
 		if (elements.coordinates.x == NULL)
-			elements.coordinates.x = (double *)malloc(*dim1 * sizeof(double));
+			elements.coordinates.x = (double*)malloc(*dim1 * sizeof(double));
 		for (int iElement = 0; iElement < *dim1; iElement++)
 			elements.coordinates.x[iElement] = Unit::ChangeUnit(value[iElement], unit, UNIT_mm);
 		calculationDone = false;
@@ -231,7 +225,7 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	if (strcmpi(param_name, "Elements.Coordinates.y") == 0)
 	{
 		if (elements.coordinates.y == NULL)
-			elements.coordinates.y = (double *)malloc(*dim1 * sizeof(double));
+			elements.coordinates.y = (double*)malloc(*dim1 * sizeof(double));
 		for (int iElement = 0; iElement < *dim1; iElement++)
 			elements.coordinates.y[iElement] = Unit::ChangeUnit(value[iElement], unit, UNIT_mm);
 		calculationDone = false;
@@ -241,14 +235,14 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	if (strcmpi(param_name, "Elements.Coordinates.z") == 0)
 	{
 		if (elements.coordinates.z == NULL)
-			elements.coordinates.z = (double *)malloc(*dim1 * sizeof(double));
+			elements.coordinates.z = (double*)malloc(*dim1 * sizeof(double));
 		for (int iElement = 0; iElement < *dim1; iElement++)
 			elements.coordinates.z[iElement] = Unit::ChangeUnit(value[iElement], unit, UNIT_mm);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
 
-	if (_strnicmp(param_name, "Targets", strlen("Targets")) == 0)
+	if (strnicmp(param_name, "Targets", strlen("Targets")) == 0)
 	{
 		if (numberOfTargets > 0 && *dim1 != numberOfTargets) // Do we have to resize arrays of targets?
 		{													 // Yes. Release previous arrays.
@@ -271,7 +265,7 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	if (strcmpi(param_name, "Targets.Tilts") == 0)
 	{
 		if (targets.tilts == NULL)
-			targets.tilts = (double *)malloc(*dim1 * sizeof(double));
+			targets.tilts = (double*)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
 			targets.tilts[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_rad);
 		calculationDone = false;
@@ -281,7 +275,7 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	if (strcmpi(param_name, "Targets.Skews") == 0)
 	{
 		if (targets.skews == NULL)
-			targets.skews = (double *)malloc(*dim1 * sizeof(double));
+			targets.skews = (double*)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
 			targets.skews[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_rad);
 		calculationDone = false;
@@ -291,7 +285,7 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	if (strcmpi(param_name, "Targets.Positions") == 0)
 	{
 		if (targets.positions == NULL)
-			targets.positions = (double *)malloc(*dim1 * sizeof(double));
+			targets.positions = (double*)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
 			targets.positions[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_mm);
 		calculationDone = false;
@@ -301,13 +295,13 @@ int Cplate::Set(const char *param_name, int unit, int *dim1, double *value)
 	calculationDone = false;
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
-int Cplate::Set(const char *param_name, int unit, int *dim1, int *dim2, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Set(const char *param_name, int unit, int *dim1, int *dim2, double *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Set(const char *param_name, int unit, int *dim1, int *dim2, int *dim3, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Set(const char *param_name, int unit, int *dim1, int *dim2, int *dim3, double *value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Set(const char* param_name, int unit, int* dim1, int* dim2, int* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Set(const char* param_name, int unit, int* dim1, int* dim2, double* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Set(const char* param_name, int unit, int* dim1, int* dim2, int* dim3, int* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Set(const char* param_name, int unit, int* dim1, int* dim2, int* dim3, double* value) { return PLUGIN_UNKNOWN_PARAMETER; }
 
-int Cplate::Get(const char *param_name, int unit, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Get(const char *param_name, int unit, double *value)
+int Cplate::Get(const char* param_name, int unit, int* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Get(const char* param_name, int unit, double* value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -321,9 +315,9 @@ int Cplate::Get(const char *param_name, int unit, double *value)
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
-int Cplate::Get(const char *param_name, int unit, int *dim1, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Get(const char *param_name, int unit, int *dim1, double *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Get(const char *param_name, int unit, int *dim1, char *value)
+int Cplate::Get(const char* param_name, int unit, int* dim1, int* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Get(const char* param_name, int unit, int* dim1, double* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Get(const char* param_name, int unit, int* dim1, char* value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -341,8 +335,8 @@ int Cplate::Get(const char *param_name, int unit, int *dim1, char *value)
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
-int Cplate::Get(const char *param_name, int unit, int *dim1, int *dim2, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Get(const char *param_name, int unit, int *dim1, int *dim2, double *value)
+int Cplate::Get(const char* param_name, int unit, int* dim1, int* dim2, int* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Get(const char* param_name, int unit, int* dim1, int* dim2, double* value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -423,10 +417,10 @@ int Cplate::Get(const char *param_name, int unit, int *dim1, int *dim2, double *
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
-int Cplate::Get(const char *param_name, int unit, int *dim1, int *dim2, int *dim3, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
-int Cplate::Get(const char *param_name, int unit, int *dim1, int *dim2, int *dim3, double *value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Get(const char* param_name, int unit, int* dim1, int* dim2, int* dim3, int* value) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::Get(const char* param_name, int unit, int* dim1, int* dim2, int* dim3, double* value) { return PLUGIN_UNKNOWN_PARAMETER; }
 
-int Cplate::ExecSync(const char *action)
+int Cplate::ExecSync(const char* action)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
@@ -446,7 +440,7 @@ int Cplate::ExecSync(const char *action)
 		paths = (Cplate::PPATH)malloc(numberOfTargets * sizeof(Cplate::PATH));
 		for (int iTarget = 0; iTarget < numberOfTargets; iTarget++)
 		{
-			laws[iTarget].delays = (double *)malloc(numberOfElements * sizeof(double));
+			laws[iTarget].delays = (double*)malloc(numberOfElements * sizeof(double));
 		}
 
 		// Calculates laws and paths
@@ -459,7 +453,7 @@ int Cplate::ExecSync(const char *action)
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
 
-int Cplate::ExecAsync(const char *action) { return PLUGIN_UNKNOWN_PARAMETER; }
+int Cplate::ExecAsync(const char* action) { return PLUGIN_UNKNOWN_PARAMETER; }
 
 /**
  * maxArray
@@ -470,7 +464,7 @@ int Cplate::ExecAsync(const char *action) { return PLUGIN_UNKNOWN_PARAMETER; }
  *
  * @return double max : The max element of the array
  **/
-double Cplate::maxArray(const double *array, int size)
+double Cplate::maxArray(double* array, int size)
 {
 	double max = array[0];
 
@@ -494,7 +488,7 @@ double Cplate::maxArray(const double *array, int size)
  *
  * @return double min : The min element of the array
  **/
-double Cplate::minArray(const double *array, int size)
+double Cplate::minArray(double* array, int size)
 {
 	double min = array[0];
 
@@ -509,26 +503,18 @@ double Cplate::minArray(const double *array, int size)
 	return min;
 }
 
-int Cplate::minArrayIndex(const double *array, int size)
+/**
+ * @brief concatenate ar2 at the end of ar1
+ *
+ * @param ar1 pointer to the first array
+ * @param ar2 pointer to the second array
+ * @param len1 length of the first array
+ * @param len2 length of the second array
+ * @return double* return a pointer to a new array with (len1 + len2)*sizeof(double) memory size
+ */
+double* Cplate::append(double* ar1, double* ar2, int len1, int len2)
 {
-	double min = array[0];
-	int index = 0;
-
-	for (int i = 0; i < size; i++)
-	{
-		if (min > array[i])
-		{
-			min = array[i];
-			index = i;
-		}
-	}
-
-	return index;
-}
-
-double *Cplate::append(double *ar1, double *ar2, int len1, int len2)
-{
-	double *arTmp = (double *)malloc(sizeof(double) * (len1 + len2));
+	double* arTmp = (double*)malloc(sizeof(double) * (len1 + len2));
 
 	for (int i = 0; i < len1; i++)
 	{
@@ -548,7 +534,25 @@ double *Cplate::append(double *ar1, double *ar2, int len1, int len2)
 	return arTmp;
 }
 
-using namespace std;
+
+int Cplate::minArrayIndex(const double* array, int size)
+{
+	double min = array[0];
+	int index = 0;
+
+	for (int i = 0; i < size; i++)
+	{
+		if (min > array[i])
+		{
+			min = array[i];
+			index = i;
+		}
+	}
+
+	return index;
+}
+
+
 
 int Cplate::Calculate()
 {
@@ -608,20 +612,28 @@ int Cplate::Calculate()
 
 	// Memory allocation for positionProjection array (temporary array to not modify the values int targets.position array).
 	double* positionProjection = (double*)malloc(numberOfTargets * sizeof(double));
+	// Memory allocation for positionProjection2 array for the path of the US.
+	double* positionProjection2 = (double*)malloc(numberOfTargets * sizeof(double));
+
+	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+	{
+		if (positionType == FLOW_POSITION_TYPE::PATH)
+		{
+			positionProjection2[iLaw] = targets.positions[iLaw] * cos(targets.tilts[iLaw]);
+			positionProjection[iLaw] = targets.positions[iLaw] / cos(targets.tilts[iLaw]);
+		}
+		else {
+			positionProjection2[iLaw] = targets.positions[iLaw];
+			positionProjection[iLaw] = targets.positions[iLaw];
+		}
+	}
 
 	// This condition handle the case when the distance between the probe and the plate equals to 0.
 	if (coupling.height == 0)
 	{
 		// For loop that push into positionProjection array the position and convert the values
 		// if the flow position equals to DEPTH.
-		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
-		{
-			if (positionType != FLOW_POSITION_TYPE::DEPTH){
-				positionProjection[iLaw] = targets.positions[iLaw] / cos(targets.tilts[iLaw]);
-			}
-			else
-				positionProjection[iLaw] = targets.positions[iLaw];
-		}
+		
 
 		// Array of all distances between probe element and focus point.
 		double* distances;
@@ -648,17 +660,17 @@ int Cplate::Calculate()
 			}
 
 			// Distance from the interface point at the middle to the focus point
-			double focusPointDistance = distances[numberOfElements / 2];
+			//double focusPointDistance = distances[numberOfElements / 2];
 
 			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
 			if (numberOfElements % 2 != 0) {
 				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
 				paths[iLaw].x[1] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[2] = focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
 
 				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
 				paths[iLaw].y[1] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[2] = focusPointDistance * cos(targets.tilts[iLaw]) + elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[2] = positionProjection2[iLaw] + elements.coordinates.y[numberOfElements / 2];
 
 				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
 				paths[iLaw].z[1] = elements.coordinates.z[numberOfElements / 2];
@@ -668,16 +680,16 @@ int Cplate::Calculate()
 			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
 			else
 			{
-				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) + 1]) / 2;
-				paths[iLaw].x[1] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) + 1]) / 2;
-				paths[iLaw].x[2] = focusPointDistance * sin(targets.tilts[iLaw]) + paths[iLaw].x[0];
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
 
-				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) + 1]) / 2;
-				paths[iLaw].y[1] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) + 1]) / 2;
-				paths[iLaw].y[2] = focusPointDistance * cos(targets.tilts[iLaw]) + paths[iLaw].y[0];
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[2] = positionProjection2[iLaw] + paths[iLaw].y[0];
 
-				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) + 1]) / 2;
-				paths[iLaw].z[1] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) + 1]) / 2;
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
 				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
 			}
 
@@ -690,14 +702,13 @@ int Cplate::Calculate()
 	else
 	{
 		// Memory allocation for x,y,z coordinates of flat bottom holes.
-		double *xFbhP = (double *)malloc(numberOfTargets * sizeof(double));
-		double *yFbhP = (double *)malloc(numberOfTargets * sizeof(double));
-		double *zFbhP = (double *)malloc(numberOfTargets * sizeof(double));
+		double* xFbhP = (double*)malloc(numberOfTargets * sizeof(double));
+		double* yFbhP = (double*)malloc(numberOfTargets * sizeof(double));
+		double* zFbhP = (double*)malloc(numberOfTargets * sizeof(double));
 
 		// For loop that compute x,y,z coordinates of flat bottom holes and push them into their respectives array.
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
-			// inversion du x et du y ici
 			double yFhb = (cos(targets.tilts[iLaw]) * targets.positions[iLaw]) + coupling.height;
 
 			double xFhb = ((tan(asin((sin(targets.tilts[iLaw]) * coupling.velocity) / material.velocity)) * coupling.height) + (sin(targets.tilts[iLaw]) * targets.positions[iLaw])) * cos(targets.skews[iLaw]);
@@ -710,10 +721,10 @@ int Cplate::Calculate()
 		}
 
 		// Memory allocation array1, array2, array3, array4 are where we are going to put all min / max boundaries for interest zones on the interface.
-		double *array1 = (double *)malloc(numberOfTargets * sizeof(double));
-		double *array2 = (double *)malloc(numberOfTargets * sizeof(double));
-		double *array3 = (double *)malloc(numberOfTargets * sizeof(double));
-		double *array4 = (double *)malloc(numberOfTargets * sizeof(double));
+		double* array1 = (double*)malloc(numberOfTargets * sizeof(double));
+		double* array2 = (double*)malloc(numberOfTargets * sizeof(double));
+		double* array3 = (double*)malloc(numberOfTargets * sizeof(double));
+		double* array4 = (double*)malloc(numberOfTargets * sizeof(double));
 
 		// Creation of counters to know the length of aboves array.
 		int cptAr1 = 0;
@@ -724,7 +735,6 @@ int Cplate::Calculate()
 		// For loop that determines min / max boundaries for the interest zone on the interface.
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
-			// inversion du x et du y ici partout pour les Fbh et pour les max/min
 			if (maxXProbe < xFbhP[iLaw])
 			{
 				array1[iLaw] = ((coupling.height - minYProbe) * ((xFbhP[iLaw] - maxXProbe) / (yFbhP[iLaw] - minYProbe))) + maxXProbe;
@@ -770,55 +780,54 @@ int Cplate::Calculate()
 			}
 		}
 
-		double subArray1 = maxArray(array1, cptAr1) - minArray(array2, cptAr2); // Size of the interest zone on XY axis.
-		double subArray2 = maxArray(array3, cptAr3) - minArray(array4, cptAr4); // Size of the interest zone on YZ axis.
+		double interestZoneSize1 = maxArray(array1, cptAr1) - minArray(array2, cptAr2); // Size of the interest zone on the XY axis.
+		double interestZoneSize2 = maxArray(array3, cptAr3) - minArray(array4, cptAr4); // Size of the interest zone on the YZ axis.
 
 		// Release of the memory taken by array1 and array3.
 		free(array1);
 		free(array3);
 
-		double *arrayCouplingHeight = (double *)malloc(((subArray1 / resolution) + 1 + 1) * sizeof(double)); // Array where we are going to put the coupling height before duplicating it into xIntP.
-		double *arrayPreYInterfaceP = (double *)malloc(((subArray1 / resolution) + 1 + 1) * sizeof(double)); // Array that contain Y coodinates of interest points before duplicating it into yIntP.
+		double* arrayCouplingHeight = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double)); // Array where we are going to put the coupling height before duplicating it into xIntP.
+		double* arrayPreYInterfaceP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double)); // Array that contain Y coodinates of interest points before duplicating it into yIntP.
 
-		// For loop that compute Y interface points coordinates and X interface points coordinates and push them into arrays.
-		for (int i = 0; i < ((subArray1 / resolution) + 1); i++)
+		// For loop that compute Y interface points coordinates and X interface points coordinates and push them into arrays (Y interface points here are contained in arrayPreInterfaceP
+		// and X interface points in arrayCouplingHeight, explications in the comment below.
+		for (int i = 0; i < ((interestZoneSize1 / resolution) + 1); i++)
 		{
-			//arrayCouplingHeight[i] = coupling.height;
-
-			//inversion des 2 tableaux ici
+			// Initially the algorithm was calculating interface points on YX axis but by convention we take XY that's why the names of arrays are inverted here.
 			arrayCouplingHeight[i] = (resolution * i) + minArray(array2, cptAr2);
 			arrayPreYInterfaceP[i] = coupling.height;
-
-			//arrayPreYInterfaceP[i] = (resolution * i) + minArray(array2, cptAr2);
 		}
 
 		// Release of the memory taken by array2.
 		free(array2);
 
 		// Memory allocation for x,y,z coordinates of interface points array.
-		double *xIntP = (double *)malloc(((subArray1 / resolution) + 1 + 1) * sizeof(double));
-		double *yIntP = (double *)malloc(((subArray1 / resolution) + 1 + 1) * sizeof(double));
-		double *zIntP = (double *)malloc(((subArray1 / resolution) + 1 + 1) * sizeof(double));
+		double* xIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
+		double* yIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
+		double* zIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
 
-		double *zIntPTmp = (double *)malloc(((subArray1 / resolution) + 1 + 1) * sizeof(double));
+		// Temporary array to append zIntP coordinates.
+		double* zIntPTmp = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
 
-		// For loop that duplicate X,Y coordinates and compute Z interface point coordinate for matrix probe
-		for (int i = 0; i < ((subArray2 / resolution) + 1); i++)
+		// For loop that duplicate X,Y coordinates and compute Z interface point coordinate for matrix probe.
+		for (int i = 0; i < ((interestZoneSize2 / resolution) + 1); i++)
 		{
-			xIntP = append(xIntP, arrayCouplingHeight, (int)(subArray1 / resolution) * (i), (subArray1 / resolution));
-			yIntP = append(yIntP, arrayPreYInterfaceP, (int)(subArray1 / resolution) * (i), (subArray1 / resolution));
 
-			for (int j = 0; j < ((subArray1 / resolution) + 1); j++)
+			xIntP = append(xIntP, arrayCouplingHeight, (int)(interestZoneSize1 / resolution) * (i), (interestZoneSize1 / resolution));
+			yIntP = append(yIntP, arrayPreYInterfaceP, (int)(interestZoneSize1 / resolution) * (i), (interestZoneSize1 / resolution));
+
+			for (int j = 0; j < ((interestZoneSize1 / resolution) + 1); j++)
 			{
 				zIntPTmp[j] = (i * resolution) + minArray(array4, cptAr4);
 			}
 
-			zIntP = append(zIntP, zIntPTmp, (int)(subArray1 / resolution) * (i), (subArray1 / resolution));
+			zIntP = append(zIntP, zIntPTmp, (int)(interestZoneSize1 / resolution) * (i), (interestZoneSize1 / resolution));
 		}
 
-		xIntP = append(xIntP, arrayCouplingHeight, (int)(subArray1 / resolution) * ((subArray2 / resolution) + 1), (subArray1 / resolution));
-		yIntP = append(yIntP, arrayPreYInterfaceP, (int)(subArray1 / resolution) * ((subArray2 / resolution) + 1), (subArray1 / resolution));
-		zIntP = append(zIntP, zIntPTmp, (int)(subArray1 / resolution) * ((subArray2 / resolution) + 1), (subArray1 / resolution));
+		xIntP = append(xIntP, arrayCouplingHeight, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
+		yIntP = append(yIntP, arrayPreYInterfaceP, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
+		zIntP = append(zIntP, zIntPTmp, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
 
 		free(zIntPTmp);
 
@@ -827,20 +836,21 @@ int Cplate::Calculate()
 		free(arrayCouplingHeight);
 		free(arrayPreYInterfaceP);
 
+		// If we don't give i coordinates, we will enter in this case where there is no optimization for of the interface points calculation.
 		if (elements.coordinates.i == NULL)
 		{
 			for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 			{
-				double *timeFbhInt = (double *)malloc((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interest point to the flat bottom hole
+				double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interest point to the flat bottom hole
 
 				// For loop that compute the time for the US to go from the interest point to the flat bottom hole
-				for (int j = 0; j < (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1); j++)
+				for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
 				{
 					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
 				}
 
-				double *delayLaw = (double *)malloc(numberOfElements * sizeof(double));																  // Array that contain delay law for each probe
-				double *addTimeVector = (double *)malloc((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the flat bottom hole
+				double* delayLaw = (double*)malloc(numberOfElements * sizeof(double));																  // Array that contain delay law for each probe
+				double* addTimeVector = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the flat bottom hole
 
 				int minIndex;
 
@@ -848,25 +858,26 @@ int Cplate::Calculate()
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
 
-					double *timeProbeInt = (double *)malloc((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the interest point
+					double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the interest point
 
 					// For loop that compute the time for the US to go from the probe element to the interest point
-					for (int j = 0; j < (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1); j++)
+					for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
 					{
 						timeProbeInt[j] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[j], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[j], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[j], 2.0))) / (coupling.velocity / 1000);
 					}
 
 					// For loop that add timeFbhInt and timeProbeInt
-					for (int l = 0; l < (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1); l++)
+					for (int l = 0; l < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); l++)
 					{
 						addTimeVector[l] = timeFbhInt[l] + timeProbeInt[l];
 					}
 
 					free(timeProbeInt);
 
-					delayLaw[probeElem] = minArray(addTimeVector, (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1));
-					minIndex = minArrayIndex(addTimeVector, (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1));
+					delayLaw[probeElem] = minArray(addTimeVector, (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1));
 				}
+
+				minIndex = minArrayIndex(addTimeVector, (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1));
 
 				free(timeFbhInt);
 				free(addTimeVector);
@@ -887,62 +898,83 @@ int Cplate::Calculate()
 
 				double focusPointDistance = (sqrt(pow(xFbhP[iLaw] - xIntP[minIndex], 2.0) + pow(yFbhP[iLaw] - yIntP[minIndex], 2.0) + pow(zFbhP[iLaw] - zIntP[minIndex], 2.0)));
 
-				// Get the value of remarkable x,y,z coordinates
-				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = tan(asin((material.velocity * sin(targets.tilts[iLaw]))/coupling.velocity)) * coupling.height;
-				paths[iLaw].x[2] = focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2];
+				// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+				if (numberOfElements % 2 != 0) {
+					paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
+					//paths[iLaw].x[2] = focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2];
+					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
 
-				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = yIntP[minIndex];
-				paths[iLaw].y[2] = focusPointDistance * cos(targets.tilts[iLaw]) + elements.coordinates.y[numberOfElements / 2];
+					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+					paths[iLaw].y[1] = coupling.height;
+					//paths[iLaw].y[2] = focusPointDistance * cos(abs(targets.tilts[iLaw]));
+					paths[iLaw].y[2] = positionProjection2[iLaw];
 
-				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-				paths[iLaw].z[1] = zIntP[minIndex];
-				paths[iLaw].z[2] = (focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2]) *
-									(cos(targets.skews[iLaw]) / sin(targets.skews[iLaw]));
+					paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+				}
+
+				// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+				else
+				{
+					paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
+					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
+
+					paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].y[1] = coupling.height;
+					paths[iLaw].y[2] = positionProjection2[iLaw];
+
+					paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+				}
 			}
 		}
 
-		else
-		{
+		// If we  give i coordinates, we will enter in this case where there no optimization with dichotomy for the computation of the interface points.
+		else {
 			// For loop that iterates number of law times.
 			for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 			{
-				double *compar = (double *)malloc(numberOfElements * sizeof(double));
+				double* delay = (double*)malloc(numberOfElements * sizeof(double)); // Array where we gonna put all our delay for each probe.
 
-				double *timeFbhInt = (double *)malloc((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interface point to the flat bottom hole.
+				double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interface point to the flat bottom hole.
 
 				// For loop that compute the time for the US to go from the interface point to the flat bottom hole.
-				for (int j = 0; j < ((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1)); j++)
+				for (int j = 0; j < ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)); j++)
 				{
 					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
 				}
 
 				double addTimeElemIntFbh = 0; // Addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole.
 
-				// Ajout de la variable endBis pour pouvoir ensuite recup le point de focalisation + bas
-				int endBis;
+				int endBis; // Variable that permit us to know the index of the interface point for the Path.x/y/z.
 
+				// For loop that initialize each value of delay array to infinity.
 				for (int i = 0; i < numberOfElements; i++)
 				{
-					compar[i] = INFINITY;
+					delay[i] = INFINITY;
 				}
 
-				double decalage = (((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1)) / ((nbGroupInt * cstMult) - cstSub)) - 1;
+				// This variable gives us the offset between each parabola of values of interface points.
+				double offset = (((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)) / ((nbGroupInt * cstMult) - cstSub)) - 1;
 
+				// For loop that iterate number of "groups" of interface times to get the minimum value between all interface points.
 				for (int i = 0; i < nbGroupInt * cstMult; i++)
 				{
 					// For loop that compute the time for the US to go from the probe element to the interface point.
 					for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 					{
-						double *timeProbeInt = (double *)malloc((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to each interface point.
+						double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to each interface point.
 
 						// Computation of the time between the probe element and the first interface point.
 						timeProbeInt[0] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[0], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[0], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[0], 2.0))) / (coupling.velocity / 1000);
 
 						// Indexes and length for the while loop below.
-						int start = (decalage * i);
-						int end = (decalage * (i + 1)) - 1;
+						int start = (offset * i);
+						int end = (offset * (i + 1)) - 1;
 						int mid = (int)((end - start) / 2);
 						int length = 0;
 
@@ -970,56 +1002,69 @@ int Cplate::Calculate()
 						// and convert it to mm per seconds.
 						addTimeElemIntFbh = timeFbhInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[end], 2.0))) / (coupling.velocity / 1000);
 
-						// Recup de la variable
+						// Here we assign the index of the selected interface point to endBis.
 						endBis = end;
 
 						// Release of the memory taken by timeProbeInt.
 						free(timeProbeInt);
 
 						// Push addTimeElemIntFbh into delayLaw array.
-						if (compar[probeElem] > addTimeElemIntFbh)
+						if (delay[probeElem] > addTimeElemIntFbh)
 						{
-							compar[probeElem] = addTimeElemIntFbh;
+							delay[probeElem] = addTimeElemIntFbh;
 						}
 					}
 				}
 
-				double focusPointDistance = (sqrt(pow(xFbhP[iLaw] - xIntP[endBis], 2.0) + pow(yFbhP[iLaw] - yIntP[endBis], 2.0) + pow(zFbhP[iLaw] - zIntP[endBis], 2.0)));
+				// Variable that gives us the norm of the vector between the selected interface point and the flat bottom hole.
+				// double focusPointDistance = (sqrt(pow(xFbhP[iLaw] - xIntP[endBis], 2.0) + pow(yFbhP[iLaw] - yIntP[endBis], 2.0) + pow(zFbhP[iLaw] - zIntP[endBis], 2.0)));
 
-				// Get the value of remarkable x,y,z coordinates
-				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = tan(asin((material.velocity * sin(targets.tilts[iLaw]))/coupling.velocity)) * coupling.height;
-				paths[iLaw].x[2] = focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2];
+				// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+				if (numberOfElements % 2 != 0) {
+					paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
+					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
 
-				cout << asin((material.velocity * sin(targets.tilts[iLaw]))/coupling.velocity) << endl;
-				cout << (material.velocity * sin(targets.tilts[iLaw]))/coupling.velocity << endl;
+					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+					paths[iLaw].y[1] = coupling.height;
+					paths[iLaw].y[2] = positionProjection2[iLaw];
 
-				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = yIntP[endBis];
-				paths[iLaw].y[2] = focusPointDistance * cos(targets.tilts[iLaw]) + elements.coordinates.y[numberOfElements / 2];
+					paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+				}
 
-				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-				paths[iLaw].z[1] = zIntP[endBis];
-				paths[iLaw].z[2] = (focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2]) *
-								   (cos(targets.skews[iLaw]) / sin(targets.skews[iLaw]));
+				// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+				else
+				{
+					paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
+					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
+
+					paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].y[1] = coupling.height;
+					paths[iLaw].y[2] = positionProjection2[iLaw];
+
+					paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+				}
 
 				// Release the memory taken by timeFbhInt.
 				free(timeFbhInt);
 
-				// Maximum element of delayLaw array.
-				double maxDelayLaw = maxArray(compar, numberOfElements);
+				// Maximum element of delay array.
+				double maxDelay = maxArray(delay, numberOfElements);
 				// For loop that push the delay law for each element of the probe
 				for (int iElem = 0; iElem < numberOfElements; iElem++)
 				{
-
-					laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
+					laws[iLaw].delays[iElem] = maxDelay - delay[iElem];
 				}
 
 				// Release of the memory taken by delayLaw array.
-				free(compar);
+				free(delay);
 			}
 		}
-
 		// Release of the memory taken by x/y/zIntP
 		free(xIntP);
 		free(yIntP);

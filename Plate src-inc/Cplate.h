@@ -87,8 +87,8 @@ private:
     PPATH paths;                    // An array of remarkable points (source, interface, defect) for each target
 
     int Calculate();                // Calculates laws and paths
-    double maxArray(const double *array, int size);
-    double minArray(const double *array, int size);
+    double maxArray(double *array, int size);
+    double minArray(double *array, int size);
     double *append(double *ar1, double *ar2, int len1, int len2);
     int minArrayIndex(const double *array, int size);
 };
