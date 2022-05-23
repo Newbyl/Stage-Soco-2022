@@ -4,10 +4,12 @@ CFLAGS := -std=c++17 -Wall -Wextra -pedantic -ggdb -Wno-unused-variable -Wno-unu
 
 CLI := cli
 
+CTBB := -ltbb
+
 all : $(CLI)
 
 $(CLI) : unit.o IPlugin.o Cplate.o main.o
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(CTBB) -o $@ $^
 
 %.o : %.cpp
 	clear

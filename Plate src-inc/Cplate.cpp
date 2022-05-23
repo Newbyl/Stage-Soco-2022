@@ -3,6 +3,7 @@
 #include "unit.h"
 #include "error_codes.h"
 #include "cmath"
+#include <vector>
 
 
 // TODO : Compile with /O2 /fp:fast compilation option for windows (MSCV compiler).
@@ -18,7 +19,7 @@ Cplate::Cplate()
 	calculationDone = false;
 
 	resolution = 0.1;
-	pitch = 1.0;
+	pitch = 0.9;
 	probeType = 0;
 
 	numberOfElements = 0;
@@ -33,7 +34,7 @@ Cplate::Cplate()
 	coupling.velocity = 1500.0;
 	coupling.height = 0.0;
 
-	positionType = FLOW_POSITION_TYPE::DEPTH;
+	positionType = FLOW_POSITION_TYPE::PATH;
 
 	numberOfTargets = 0;
 
@@ -789,55 +790,48 @@ int Cplate::Calculate()
 		free(array1);
 		free(array3);
 
-		double* arrayCouplingHeight = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double)); // Array where we are going to put the coupling height before duplicating it into xIntP.
-		double* arrayPreYInterfaceP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double)); // Array that contain Y coodinates of interest points before duplicating it into yIntP.
+		vector<double> arrayCouplingHeight; // Array where we are going to put the coupling height before duplicating it into xIntP.
+		vector<double> arrayPreYInterfaceP; // Array that contain Y coodinates of interest points before duplicating it into yIntP.
 
 		// For loop that compute Y interface points coordinates and X interface points coordinates and push them into arrays (Y interface points here are contained in arrayPreInterfaceP
 		// and X interface points in arrayCouplingHeight, explications in the comment below.
 		for (int i = 0; i < ((interestZoneSize1 / resolution) + 1); i++)
 		{
 			// Initially the algorithm was calculating interface points on YX axis but by convention we take XY that's why the names of arrays are inverted here.
-			arrayCouplingHeight[i] = (resolution * i) + minArray(array2, cptAr2);
-			arrayPreYInterfaceP[i] = coupling.height;
+			arrayCouplingHeight.push_back((resolution * i) + minArray(array2, cptAr2));
+			arrayPreYInterfaceP.push_back(coupling.height);
 		}
 
 		// Release of the memory taken by array2.
 		free(array2);
 
 		// Memory allocation for x,y,z coordinates of interface points array.
-		double* xIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
-		double* yIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
-		double* zIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
-
-		// Temporary array to append zIntP coordinates.
-		double* zIntPTmp = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
+		vector<double> xIntP;
+		vector<double> yIntP;
+		//double* zIntP = (double*)malloc(((interestZoneSize1 / resolution) + 1 + 1) * sizeof(double));
+		vector<double> zIntP;
 
 		// For loop that duplicate X,Y coordinates and compute Z interface point coordinate for matrix probe.
 		for (int i = 0; i < ((interestZoneSize2 / resolution) + 1); i++)
 		{
 
-			xIntP = append(xIntP, arrayCouplingHeight, (int)(interestZoneSize1 / resolution) * (i), (interestZoneSize1 / resolution));
-			yIntP = append(yIntP, arrayPreYInterfaceP, (int)(interestZoneSize1 / resolution) * (i), (interestZoneSize1 / resolution));
-
-			for (int j = 0; j < ((interestZoneSize1 / resolution) + 1); j++)
+			for (int j = 0; j < arrayCouplingHeight.size(); j++)
 			{
-				zIntPTmp[j] = (i * resolution) + minArray(array4, cptAr4);
+				xIntP.push_back(arrayCouplingHeight[j]);
+				yIntP.push_back(arrayPreYInterfaceP[j]);
 			}
 
-			zIntP = append(zIntP, zIntPTmp, (int)(interestZoneSize1 / resolution) * (i), (interestZoneSize1 / resolution));
+			for (int j = 0; j < arrayPreYInterfaceP.size(); j++)
+			{
+				zIntP.push_back((i * resolution) + minArray(array4, cptAr4));
+			}
 		}
-
-		xIntP = append(xIntP, arrayCouplingHeight, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
-		yIntP = append(yIntP, arrayPreYInterfaceP, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
-		zIntP = append(zIntP, zIntPTmp, (int)(interestZoneSize1 / resolution) * ((interestZoneSize2 / resolution) + 1), (interestZoneSize1 / resolution));
-
-		free(zIntPTmp);
 		
 
 		// Release of the memory taken by array4, arrayCouplingHeight and arrayPreYInterfaceP.
 		free(array4);
-		free(arrayCouplingHeight);
-		free(arrayPreYInterfaceP);
+		//free(arrayCouplingHeight);
+		//free(arrayPreYInterfaceP);
 
 		// If we don't give i coordinates, we will enter in this case where there is no optimization for of the interface points calculation.
 		if (elements.coordinates.i == NULL)
@@ -845,7 +839,7 @@ int Cplate::Calculate()
 			for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 			{
 				double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interest point to the flat bottom hole
-
+				
 				// For loop that compute the time for the US to go from the interest point to the flat bottom hole
 				for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
 				{
@@ -854,13 +848,12 @@ int Cplate::Calculate()
 
 				double* delayLaw = (double*)malloc(numberOfElements * sizeof(double));																  // Array that contain delay law for each probe
 				double* addTimeVector = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the flat bottom hole
-
+				
 				int minIndex;
 
 				// For loop that compute the time for the US to go from the probe element to the interest point
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
-
 					double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the interest point
 
 					// For loop that compute the time for the US to go from the probe element to the interest point
@@ -934,6 +927,7 @@ int Cplate::Calculate()
 					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
 				}
 			}
+			
 		}
 
 		// If we  give i coordinates, we will enter in this case where there no optimization with dichotomy for the computation of the interface points.
@@ -949,7 +943,6 @@ int Cplate::Calculate()
 				for (int j = 0; j < ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)); j++)
 				{
 					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
-					
 				}
 				
 
@@ -965,6 +958,7 @@ int Cplate::Calculate()
 
 				using namespace std;
 
+				nbGroupInt = (int)(interestZoneSize2 / resolution) - 1;
 				// This variable gives us the offset between each parabola of values of interface points.
 				double offset = (((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)) / ((nbGroupInt * cstMult) - cstSub)) - 1;
 
@@ -1078,9 +1072,9 @@ int Cplate::Calculate()
 			}
 		}
 		// Release of the memory taken by x/y/zIntP
-		free(xIntP);
-		free(yIntP);
-		free(zIntP);
+		//free(xIntP);
+		//free(yIntP);
+		//free(zIntP);
 
 		// Release of the memory taken by x/y/zFbhP
 		free(xFbhP);
