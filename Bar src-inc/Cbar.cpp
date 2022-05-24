@@ -29,14 +29,12 @@ Cbar::Cbar()
 
 	resolution = 0.1;
 	barDiameter = 0;
-	pitch = 0.9;
 
 	numberOfElements = 0;
 
 	elements.coordinates.x = NULL;
 	elements.coordinates.y = NULL;
 	elements.coordinates.z = NULL;
-	elements.coordinates.i = NULL;
 
 	material.velocity = 3900.0;
 
@@ -45,7 +43,6 @@ Cbar::Cbar()
 
 	angleType = ANGLE_TYPE::INCIDENT;
 	defectType = DEFECT_TYPE::FBH;
-	probeType = PROBE_TYPE::LINEAR;
 
 	numberOfTargets = 0;
 
@@ -103,8 +100,6 @@ int Cbar::Close()
 		free(elements.coordinates.y);
 	if (elements.coordinates.z != NULL)
 		free(elements.coordinates.z);
-	if (elements.coordinates.i != NULL)
-		free(elements.coordinates.i);
 
 	return PLUGIN_NO_ERROR;
 }
@@ -127,14 +122,6 @@ int Cbar::Set(const char *param_name, int unit, int *value)
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
-
-	if (strcmpi(param_name, "Probe_Type") == 0)
-	{
-		probeType = (PROBE_TYPE)*value;
-		calculationDone = false;
-		return PLUGIN_NO_ERROR;
-	}
-
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
@@ -193,45 +180,11 @@ int Cbar::Set(const char *param_name, int unit, double *value)
 		return PLUGIN_NO_ERROR;
 	}
 
-	if (strcmpi(param_name, "pitch") == 0)
-	{
-		pitch = Unit::ChangeUnit(*value, unit, UNIT_mm);
-		calculationDone = false;
-		return PLUGIN_NO_ERROR;
-	}
-
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
 int Cbar::Set(const char *param_name, int unit, char *value) { return PLUGIN_UNKNOWN_PARAMETER; }
 
-int Cbar::Set(const char *param_name, int unit, int *dim1, int *value) {
-	if (!opened)
-		return PLUGIN_NOT_OPEN;
-
-	if (_strnicmp(param_name, "Elements.Coordinates", strlen("Elements.Coordinates")) == 0)
-	{
-		if (numberOfElements > 0 && *dim1 != numberOfElements) // Do we have to resize arrays of coordinates?
-		{													   // Yes. Release previous arrays.
-			free(elements.coordinates.i);
-			elements.coordinates.i = NULL;
-			numberOfElements = *dim1;
-		}
-		if (numberOfElements == 0)
-			numberOfElements = *dim1;
-	}
-
-	if (strcmpi(param_name, "Elements.Coordinates.i") == 0)
-	{
-		if (elements.coordinates.i == NULL)
-			elements.coordinates.i = (double *)malloc(*dim1 * sizeof(double));
-		for (int iElement = 0; iElement < *dim1; iElement++)
-			elements.coordinates.i[iElement] = value[iElement];
-		calculationDone = false;
-		return PLUGIN_NO_ERROR;
-	}
-
-	return PLUGIN_UNKNOWN_PARAMETER; 
-	}
+int Cbar::Set(const char *param_name, int unit, int *dim1, int *value) { return PLUGIN_UNKNOWN_PARAMETER; }
 
 int Cbar::Set(const char *param_name, int unit, int *dim1, double *value)
 {
@@ -545,30 +498,6 @@ double Cbar::minArray(double *array, int size)
 }
 
 
-double* Cbar::append(std::vector<double> ar1, double* ar2, int len1, int len2)
-{
-	double *arTmp = (double *)malloc(sizeof(double) * (len1 + len2 + 1));
-
-	for (int i = 0; i < len1; i++)
-	{
-		arTmp[i] = ar1[i];
-	}
-
-	int cpt = 0;
-
-	for (int i = len1; i < len1 + len2; i++)
-	{
-		arTmp[i] = ar2[cpt];
-		cpt++;
-	}
-
-	free(ar2);
-
-	return arTmp;
-}
-
-
-
 std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 {
 	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
@@ -689,61 +618,6 @@ int Cbar::Calculate()
 {
 	using namespace std;
 
-	// For loop that find the number of different "groups" that we have in element.coordinates.i array.
-	int nbGroup = 1;
-	if (elements.coordinates.i != NULL)
-	{
-		nbGroup = elements.coordinates.i[0];
-		for (size_t i = 1; i < numberOfElements; i++)
-		{
-			if (nbGroup < elements.coordinates.i[i])
-			{
-				nbGroup = elements.coordinates.i[i];
-			}
-		}
-	}
-	
-	// variable that calculate the number of "interface groups".
-	int nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
-
-	// Declaration of constant that will permit to multiplicate by 2 and substract by 1 the number of "interface groups"
-	// for the sectorial probe.
-	int cstMult;
-	int cstSub;
-	int cstSub2;
-
-	// Switch that assign the right value to constant for all different probe types (0 = linear / 1 = matrix / 2 = sectorial).
-	switch (probeType)
-	{
-	case PROBE_TYPE::LINEAR :
-		cstMult = 1;
-		cstSub = 0;
-		cstSub2 = 1;
-		break;
-
-	case PROBE_TYPE::MATRIX :
-		cstMult = 1;
-		cstSub = 0;
-		cstSub2 = 1;
-		break;
-
-	case PROBE_TYPE::SECTORIAL :
-		// In the sectorial case we have (2*n)-1 more "interface groups" than linear and matrix.
-		cstMult = 2;
-		cstSub = 1;
-		cstSub2 = 0;
-		break;
-
-	default:
-		cstMult = 1;
-		cstSub = 0;
-		cstSub2 = 1;
-		break;
-	}
-
-
-
-
     if (defectType == DEFECT_TYPE::FBH){
         double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
@@ -826,29 +700,35 @@ int Cbar::Calculate()
             }
         }
 
-        double* xIntB = (double*)malloc(sizeof(double));
-        double* yIntB = (double*)malloc(sizeof(double));
+
+		vector<double> xIntB;
+		vector<double> yIntB;
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
-            xIntB = append(preXIntB, xIntB, preXIntB.size(), i * preXIntB.size());
-            yIntB = append(preYIntB, yIntB, preYIntB.size(), i * preYIntB.size());
+			for (int j = 0; j < preXIntB.size(); j++)
+			{
+				xIntB.push_back(preXIntB[j]);
+				yIntB.push_back(preYIntB[j]);
+			}
+            
 
             for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
             {
                 zIntB[j] = (resolution * i) + minZProbe;
             }
         }
-
+		
+		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
 
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
-			int decalage = ((int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / ((nbGroupInt * cstMult) - cstSub))) - cstSub2;
+			int decalage = xIntB.size() / nbGroupInt;
 
 			double addTimeElemIntDef = 0;
 
@@ -863,13 +743,13 @@ int Cbar::Calculate()
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
             }
 
-			for (int i = 0; i < (numberOfElements * cstMult) - cstSub; i++)
+			for (int i = 0; i < numberOfElements; i++)
 			{
 				compar[i] = INFINITY;
 			}
 
 			// changement de la boucle ici
-            for (int i = 0; i < (nbGroupInt * cstMult) - cstSub; i++)
+            for (int i = 0; i < nbGroupInt; i++)
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
@@ -934,11 +814,9 @@ int Cbar::Calculate()
 		free(xDef);
 		free(yDef);
 		free(zDef);
-		/*
-		free(xIntB);
-		free(yIntB);
+		
 		free(zIntB);
-		*/
+		
         
     }
 
@@ -965,7 +843,6 @@ int Cbar::Calculate()
         double minAngle = minArray(asinNotcheRad, numberOfTargets);
 		
 		free(asinNotcheRad);
-
         vector<double*> notcheValues = notcheBuilder(barDiameter/2);
 
         for (int i = 0; i < numberOfTargets; i++)
@@ -1051,17 +928,19 @@ int Cbar::Calculate()
             }
         }
 
-        double* xIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
-        * sizeof(double));
-        double* yIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
-        * sizeof(double));
-        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1 + 1) * preYIntB.size() 
-        * sizeof(double));
+		vector<double> xIntB;
+		vector<double> yIntB;
+		double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+		* sizeof(double));
+
 
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
-            xIntB = append(preXIntB, xIntB, preXIntB.size(), i * preXIntB.size());
-            yIntB = append(preYIntB, yIntB, preYIntB.size(), i * preYIntB.size());
+			for (int j = 0; j < preXIntB.size(); j++)
+			{
+				xIntB.push_back(preXIntB[j]);
+				yIntB.push_back(preYIntB[j]);
+			}
 
             for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
             {
@@ -1069,12 +948,15 @@ int Cbar::Calculate()
             }
         }
 
+		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
+		
+
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
 			// changer decalage données brut
-			int decalage = (int)(((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size()) / ((nbGroupInt * cstMult) - cstSub));
+			int decalage = xIntB.size() / nbGroupInt;
 
 			double addTimeElemIntDef = 0;
 
@@ -1086,6 +968,9 @@ int Cbar::Calculate()
                 distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
                 + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+
+				if(iLaw == 15)
+					cout << pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) << endl;
             }
 
 
@@ -1095,7 +980,7 @@ int Cbar::Calculate()
 			}
 
 			// changement de la boucle ici
-            for (int i = 0; i < (nbGroupInt * cstMult) - cstSub; i++)
+            for (int i = 0; i < nbGroupInt; i++)
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
@@ -1149,7 +1034,6 @@ int Cbar::Calculate()
 			// For loop that push the delay law for each element of the probe
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
-
 				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
 			}
 
@@ -1157,17 +1041,15 @@ int Cbar::Calculate()
 			free(compar);
 			free(distDefInt);
 		}
-
+		
 		free(xDef);
 		free(yDef);
 		free(zDef);
 
 		free(deflexionAngle);
 
-		free(xIntB);
-		free(yIntB);
 		free(zIntB);
-
+		
 
     }
 

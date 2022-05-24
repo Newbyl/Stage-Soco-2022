@@ -19,8 +19,6 @@ int main()
 
 	double zP[32] = {1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45,
 				-0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45, -1.35, 1.35, 0.45, -0.45,-1.35};
-
-	int i[32] = {1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4};
 	*/
 
 	// 64 éléments
@@ -40,7 +38,8 @@ int main()
 	// Sonde sectorielle 127 éléments
 	
 	double tilts[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-	double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	//double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	double notch[1] = { 30 };
 	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 
 	double yP[127]{0,
@@ -303,18 +302,14 @@ int main()
 5.31796	
 };
 
-int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-
-
 
 	int nbElem = 127;
-	int nbLaw = 16;
+	int nbLaw = 1;
 	double matcel = 3230.0;
 	double ch = 70;
 	int nbPtRemar = 3;
-	int aglTy = 0;
-	int defTy = 1;
+	int aglTy = 1;
+	int defTy = 0;
 	int proTy = 2;
 	double barDiam = 404;
 
@@ -329,7 +324,6 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	cbar.Set("Elements.coordinates.x", UNIT_mm, &nbElem, xP);
 	cbar.Set("Elements.coordinates.y", UNIT_mm, &nbElem, yP);
 	cbar.Set("Elements.Coordinates.z", UNIT_mm, &nbElem, zP);
-	cbar.Set("Elements.coordinates.i", UNIT_mm, &nbElem, i);
 	
 	cbar.Set("Targets.Tilts", UNIT_deg, &nbLaw, tilts);
 	cbar.Set("Targets.NotchesAngles", UNIT_deg, &nbLaw, notch);
@@ -338,7 +332,6 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 
 	cbar.Set("Defect_Type", UNIT_mm, &defTy);
 	cbar.Set("Angle_Type", UNIT_mm, &aglTy);
-	cbar.Set("Probe_Type", UNIT_mm, &proTy);
 
 	cbar.Set("Coupling.Height", UNIT_mm, &ch);
 	cbar.Set("BarDiameter", UNIT_mm, &barDiam);
@@ -381,9 +374,9 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 
 	cbar.Close();
 	
-	//free(yRemarq);
-	//free(xRemarq);
-	//free(zRemarq);
+	free(yRemarq);
+	free(xRemarq);
+	free(zRemarq);
 	
 	free(la);
 }

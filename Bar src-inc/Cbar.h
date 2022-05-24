@@ -41,21 +41,12 @@ private:
     
     double resolution;              // The resolution for interface points, default = 0.1mm.
     double barDiameter;             // Diameter of the bar in millimeters.
-    double pitch;                   // Distance between elements of the probe
-
-    enum class PROBE_TYPE {         // Type of the probe used to provide the right delay laws values
-        LINEAR,                     // (used for the optimized version)
-        MATRIX,
-        SECTORIAL
-    }probeType;
-    
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
         struct COORDINATES {
             double* x;              // in millimeters
             double* y;              //
             double* z;              //
-            double* i;
         }coordinates;
     }elements;
 
@@ -102,7 +93,6 @@ private:
     int Calculate();                // Calculates laws and paths
     double maxArray(double *array, int size);   // return the max element of an array
     double minArray(double *array, int size);   // return the max element of an array
-    double* append(std::vector<double> ar1, double* ar2, int len1, int len2);   // Add array1 at the end of array2
     std::vector<double*> fbhBuilder(double barDiameter2);
     std::vector<double*> notcheBuilder(double barDiameter2);
 };
