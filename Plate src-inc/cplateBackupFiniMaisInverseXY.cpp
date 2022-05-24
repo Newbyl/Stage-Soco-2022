@@ -470,7 +470,7 @@ int Cplate::ExecAsync(const char *action) { return PLUGIN_UNKNOWN_PARAMETER; }
  *
  * @return double max : The max element of the array
  **/
-double Cplate::maxArray(const double *array, int size)
+double Cplate::maxArray(double *array, int size)
 {
 	double max = array[0];
 
@@ -494,7 +494,7 @@ double Cplate::maxArray(const double *array, int size)
  *
  * @return double min : The min element of the array
  **/
-double Cplate::minArray(const double *array, int size)
+double Cplate::minArray(double *array, int size)
 {
 	double min = array[0];
 
@@ -507,23 +507,6 @@ double Cplate::minArray(const double *array, int size)
 	}
 
 	return min;
-}
-
-int Cplate::minArrayIndex(const double *array, int size)
-{
-	double min = array[0];
-	int index = 0;
-
-	for (int i = 0; i < size; i++)
-	{
-		if (min > array[i])
-		{
-			min = array[i];
-			index = i;
-		}
-	}
-
-	return index;
 }
 
 double *Cplate::append(double *ar1, double *ar2, int len1, int len2)
@@ -791,6 +774,11 @@ int Cplate::Calculate()
 
 		free(zIntPTmp);
 
+		for (int i = 0; i < (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1); i++)
+		{
+			cout << yIntP[i] << endl;
+		}
+
 		// Release of the memory taken by array4, arrayCouplingHeight and arrayPreYInterfaceP.
 		free(array4);
 		free(arrayCouplingHeight);
@@ -835,7 +823,6 @@ int Cplate::Calculate()
 					free(timeProbeInt);
 
 					delayLaw[probeElem] = minArray(addTimeVector, (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1));
-					minIndex = minArrayIndex(addTimeVector, (int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1));
 				}
 
 				free(timeFbhInt);
@@ -900,6 +887,8 @@ int Cplate::Calculate()
 
 				double decalage = (((int)((subArray2 / resolution) + 1) * (int)((subArray1 / resolution) + 1)) / ((nbGroupInt * cstMult) - cstSub)) - 1;
 
+				//std::cout << decalage << std::endl;
+
 				for (int i = 0; i < nbGroupInt * cstMult; i++)
 				{
 					// For loop that compute the time for the US to go from the probe element to the interface point.
@@ -936,10 +925,11 @@ int Cplate::Calculate()
 							}
 						}
 
+						
+
 						// The addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole
 						// and convert it to mm per seconds.
 						addTimeElemIntFbh = timeFbhInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[end], 2.0))) / (coupling.velocity / 1000);
-
 						// Recup de la variable
 						endBis = end;
 

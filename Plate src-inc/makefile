@@ -4,12 +4,18 @@ CFLAGS := -std=c++17 -Wall -Wextra -pedantic -ggdb -Wno-unused-variable -Wno-unu
 
 CLI := cli
 
+CLITEST := clitest
+
 CTBB := -ltbb
 
 all : $(CLI)
+test2 : $(CLITEST)
 
 $(CLI) : unit.o IPlugin.o Cplate.o main.o
 	$(CC) $(CFLAGS) $(CTBB) -o $@ $^
+
+$(CLITEST) : cplateBackupFiniMaisInverseXY.o unit.o IPlugin.o main.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.o : %.cpp
 	clear

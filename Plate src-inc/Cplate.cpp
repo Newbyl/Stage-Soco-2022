@@ -602,7 +602,6 @@ int Cplate::Calculate()
 	}
 
 	// variable that calculate the number of "interface groups".
-	int nbGroupInt = (((nbGroup - 1) * pitch) / resolution) + 1;
 
 	// Here we get the max and min of x,y,z coordinates.
 	double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
@@ -795,12 +794,13 @@ int Cplate::Calculate()
 
 		// For loop that compute Y interface points coordinates and X interface points coordinates and push them into arrays (Y interface points here are contained in arrayPreInterfaceP
 		// and X interface points in arrayCouplingHeight, explications in the comment below.
-		for (int i = 0; i < ((interestZoneSize1 / resolution) + 1); i++)
+		for (int i = 0; i < (int)((interestZoneSize1 / resolution) + 1); i++)
 		{
 			// Initially the algorithm was calculating interface points on YX axis but by convention we take XY that's why the names of arrays are inverted here.
 			arrayCouplingHeight.push_back((resolution * i) + minArray(array2, cptAr2));
 			arrayPreYInterfaceP.push_back(coupling.height);
 		}
+
 
 		// Release of the memory taken by array2.
 		free(array2);
@@ -812,7 +812,7 @@ int Cplate::Calculate()
 		vector<double> zIntP;
 
 		// For loop that duplicate X,Y coordinates and compute Z interface point coordinate for matrix probe.
-		for (int i = 0; i < ((interestZoneSize2 / resolution) + 1); i++)
+		for (int i = 0; i < (int)((interestZoneSize2 / resolution) + 1); i++)
 		{
 
 			for (int j = 0; j < arrayCouplingHeight.size(); j++)
@@ -826,8 +826,8 @@ int Cplate::Calculate()
 				zIntP.push_back((i * resolution) + minArray(array4, cptAr4));
 			}
 		}
+			
 		
-
 		// Release of the memory taken by array4, arrayCouplingHeight and arrayPreYInterfaceP.
 		free(array4);
 		//free(arrayCouplingHeight);
@@ -944,7 +944,8 @@ int Cplate::Calculate()
 				{
 					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
 				}
-				
+
+				int nbGroupInt = (int)((interestZoneSize2 / resolution) + 1);
 
 				double addTimeElemIntFbh = 0; // Addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole.
 
@@ -955,17 +956,12 @@ int Cplate::Calculate()
 				{
 					delay[i] = INFINITY;
 				}
-
-				using namespace std;
-
-				nbGroupInt = (int)(interestZoneSize2 / resolution) - 1;
+				
 				// This variable gives us the offset between each parabola of values of interface points.
-				double offset = (((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)) / ((nbGroupInt * cstMult) - cstSub)) - 1;
-
-				//std::cout << ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)) << std::endl;
-
+				double offset = xIntP.size() / nbGroupInt;
+				
 				// For loop that iterate number of "groups" of interface times to get the minimum value between all interface points.
-				for (int i = 0; i < nbGroupInt * cstMult; i++)
+				for (int i = 0; i < nbGroupInt; i++)
 				{
 					// For loop that compute the time for the US to go from the probe element to the interface point.
 					for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
@@ -974,7 +970,7 @@ int Cplate::Calculate()
 
 						// Computation of the time between the probe element and the first interface point.
 						timeProbeInt[0] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[0], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[0], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[0], 2.0))) / (coupling.velocity / 1000);
-
+						
 						// Indexes and length for the while loop below.
 						int start = (offset * i);
 						int end = (offset * (i + 1)) - 1;
@@ -1003,10 +999,11 @@ int Cplate::Calculate()
 
 						
 
+						
+
 						// The addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole
 						// and convert it to mm per seconds.
 						addTimeElemIntFbh = timeFbhInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[end], 2.0))) / (coupling.velocity / 1000);
-
 						// Here we assign the index of the selected interface point to endBis.
 						endBis = end;
 
