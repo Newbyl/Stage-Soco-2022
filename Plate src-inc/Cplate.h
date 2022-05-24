@@ -38,17 +38,13 @@ private:
     bool calculationDone;           // Indicates if the calculation is already done.
     int numberOfElements;           // Number of elements to calculate the laws.
     
-    int probeType;
     double resolution;              // The resolution for interface points, default = 0.1mm
-    double pitch;
     
-
     struct ELEMENTS {               // Spacial coordinates of the elements.
         struct COORDINATES {
             double* x;              // in millimeters
             double* y;              //
             double* z;              //
-            double* i;
         }coordinates;
     }elements;
 
@@ -88,10 +84,9 @@ private:
     PPATH paths;                    // An array of remarkable points (source, interface, defect) for each target
 
     int Calculate();                // Calculates laws and paths
-    double maxArray(double *array, int size);
-    double minArray(double *array, int size);
-    double *append(double *ar1, double *ar2, int len1, int len2);
-    int minArrayIndex(const double* array, int size);
+    double maxArray(double *array, int size);   // Find the maximum element of an array
+    double minArray(double *array, int size);   // Find the minimum element of an array
+    int minArrayIndex(const double* array, int size);   // find the index of the minimum element of an array
 };
 
 

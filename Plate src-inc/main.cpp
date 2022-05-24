@@ -460,7 +460,7 @@ int i[127] = {1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 	int nbElem = 127;
 	int nbLaw = 16;
 	double matcel = 5940.0;
-	double ch = 10;
+	double ch = 0;
 	int nbPtRemar = 3;
 	int probT = 0;
 
