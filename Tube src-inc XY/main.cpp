@@ -440,17 +440,23 @@ double zP[127] = {0,
 	5.31796	
 	};
 
-	double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+	//double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
 	double obl[16] = {0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5};
 	
+	double ang[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	//double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
+
 
 	int nbElem = 127;
 	int nbLaw = 16;
-	double ch = 35;
+	double ch = 70;
 	int nbPtRemar = 3;
-	double diam = 100;
+	double diam = 404;
 	double thickness = 16;
 	double focalL = 10000;
+	double intCel = 1480.0;
+	int defTy = 1;
 
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
@@ -459,10 +465,6 @@ double zP[127] = {0,
 	double *xi = (double *)malloc(nbLaw * sizeof(double));
 	double *yi = (double *)malloc(nbLaw * sizeof(double));
 	double *zi = (double *)malloc(nbLaw * sizeof(double));
-
-
-
-
 
 	Ctube ctube;
 
@@ -474,9 +476,14 @@ double zP[127] = {0,
 
 	ctube.Set("Elements.coordinates.z", UNIT_mm, &nbElem, zP);
 
+	ctube.Set("coupling.velocity", UNIT_mps, &intCel);
+
 	ctube.Set("Targets.Tilts", UNIT_deg, &nbLaw, ang);
+	ctube.Set("Targets.Positions", UNIT_deg, &nbLaw, pos);
 	ctube.Set("Targets.Skews", UNIT_deg, &nbLaw, obl);
 	
+	ctube.Set("Defect_Type", UNIT_mm, &defTy);
+
 	ctube.Set("diameter", UNIT_mm, &diam);
 	ctube.Set("thickness", UNIT_mm, &thickness);
 	ctube.Set("focal.length.coupling", UNIT_mm, &focalL);
@@ -488,16 +495,16 @@ double zP[127] = {0,
 	timeReq = clock() - timeReq;
 
 	ctube.Get("laws", UNIT_ns, &nbLaw, &nbElem, la);
-
+	/*
 	ctube.Get("alphaS", UNIT_deg, &nbLaw, alS);
 	ctube.Get("xi3D", UNIT_mm, &nbLaw, xi);
 	ctube.Get("yi3D", UNIT_mm, &nbLaw, yi);
 	ctube.Get("zi3D", UNIT_mm, &nbLaw, zi);
-
+	*/
 	
 	for (int i = 0; i < nbLaw * nbElem; i++)
 	{
-		cout << la[i] << endl;
+		cout << "i : " << i << " " << la[i] << endl;
 	}
 	/*
 	for (int i = 0; i < nbLaw; i++)

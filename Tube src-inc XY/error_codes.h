@@ -12,6 +12,7 @@
 #define PLUGIN_DIM2_TOO_SMALL				-1002
 #define PLUGIN_DIM3_TOO_SMALL				-1003
 #define PLUGIN_PARMETER_UNDEFINED			-1004
+#define PLUGIN_INVALID_ANGLE                -1005
 
 #endif /* ERROR_CODES_H_ */
 

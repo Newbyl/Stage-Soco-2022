@@ -45,10 +45,15 @@ private:
     bool opened;                    // Indicates if this class is ready to use or not.
     bool calculationDone;           // Indicates if the calculation is already done.
     int numberOfElements;           // Number of elements to calculate the laws.
+    double resolution;
 
     double diameter;                // Diameter of the tube.
     double thickness;               // Thickness of the tube.
-    
+
+    enum class DEFECT_TYPE {         // Type of defect you want to see (0 = NOTCHE, 1 = FBH)
+        NOTCHE,
+        FBH
+    }defectType;
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
         struct COORDINATES {
@@ -79,6 +84,7 @@ private:
     typedef struct _TARGETS {
         double* tilts;              // Defines the tilt angle for each target. In degree.
         double* skews;              // Defines the skew angle for each target. In degree.
+        double* positions;
     }TARGET, *PTARGET;
     TARGET targets;                 // List of targets whose laws and remarkable points of their routes must be calculated.
 
@@ -105,6 +111,7 @@ private:
     double minArray(const double *array, int size);                     // Find the min element of an array
     double *append(double *ar1, double *ar2, int len1, int len2);       // Add ar2 at the end of ar1 to form a single array
     std::vector<double> newElipse(double skew, double alphaI);          // à demander
+    std::vector<double*> fbhBuilder(double barDiameter2);
 };
 
 

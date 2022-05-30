@@ -4,6 +4,8 @@
 #include "error_codes.h"
 #include "framework.h"
 
+#define _OPTIMIZATION
+
 #define _CRT_SECURE_NO_WARNINGS
 
 #define strcmpi(x, y) strcasecmp((x), (y))
@@ -22,6 +24,9 @@ Ctube::Ctube()
 
 	diameter = 0;
 	thickness = 0;
+	resolution = 0.1;
+
+	defectType = DEFECT_TYPE::NOTCHE;
 
 	xi3D = NULL;
 	yi3D = NULL;
@@ -43,6 +48,7 @@ Ctube::Ctube()
 
 	targets.tilts = NULL;
 	targets.skews = NULL;
+	targets.positions = NULL;
 	laws = NULL;
 	paths = NULL;
 }
@@ -74,6 +80,8 @@ int Ctube::Close()
 		free(targets.tilts);
 	if (targets.skews != NULL)
 		free(targets.skews);
+	if (targets.positions != NULL)
+		free(targets.positions);
 
 	for (int iTarget = 0; iTarget < numberOfTargets; iTarget++)
 	{
@@ -109,6 +117,13 @@ int Ctube::Set(const char *param_name, int unit, int *value)
 {
 	if (!opened)
 		return PLUGIN_NOT_OPEN;
+
+	if (strcmpi(param_name, "Defect_Type") == 0)
+	{
+		defectType = (DEFECT_TYPE)*value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
 
 	return PLUGIN_UNKNOWN_PARAMETER;
 }
@@ -156,6 +171,13 @@ int Ctube::Set(const char *param_name, int unit, double *value)
 	if (strcmpi(param_name, "Diameter") == 0)
 	{
 		diameter = Unit::ChangeUnit(*value, unit, UNIT_mm);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Defect_Type") == 0)
+	{
+		defectType = (DEFECT_TYPE)*value;
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -223,6 +245,7 @@ int Ctube::Set(const char *param_name, int unit, int *dim1, double *value)
 		{													 // Yes. Release previous arrays.
 			free(targets.tilts);
 			free(targets.skews);
+			free(targets.positions);
 			free(laws);
 			free(paths);
 			targets.tilts = NULL;
@@ -251,6 +274,16 @@ int Ctube::Set(const char *param_name, int unit, int *dim1, double *value)
 			targets.skews = (double *)malloc(*dim1 * sizeof(double));
 		for (int iTarget = 0; iTarget < *dim1; iTarget++)
 			targets.skews[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_deg);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "Targets.Positions") == 0)
+	{
+		if (targets.positions == NULL)
+			targets.positions = (double *)malloc(*dim1 * sizeof(double));
+		for (int iTarget = 0; iTarget < *dim1; iTarget++)
+			targets.positions[iTarget] = Unit::ChangeUnit(value[iTarget], unit, UNIT_deg);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -325,7 +358,7 @@ int Ctube::Get(const char *param_name, int unit, int *dim1, double *value)
 	}
 
 
-	 return PLUGIN_UNKNOWN_PARAMETER; 
+	return PLUGIN_UNKNOWN_PARAMETER; 
 }
 int Ctube::Get(const char *param_name, int unit, int *dim1, char *value)
 {
@@ -791,119 +824,507 @@ std::vector<double> Ctube::newElipse(double skew, double alphaI)
 }
 
 
-int Ctube::Calculate()
+std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 {
-	using namespace std;
-		
-	// For loop that iterate the number of law that we want.
+	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
+	double* ar = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* utAngle = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* x = (double*)malloc(numberOfTargets * sizeof(double));
+	double* y = (double*)malloc(numberOfTargets * sizeof(double));
+	double* z = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* xInt = (double*)malloc(numberOfTargets * sizeof(double));
+	double* yInt = (double*)malloc(numberOfTargets * sizeof(double));
+	double* zInt = (double*)malloc(numberOfTargets * sizeof(double));
+
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
-		std::vector<double> elipse = Ctube::newElipse(targets.skews[iLaw], targets.tilts[iLaw]);
-		
-		// Here we get all the values given by the function newElipse
-		double xI3Dv = elipse.at(0);
-		double yI3Dv = elipse.at(1);
-		double zI3Dv = elipse.at(2);
-		double alphaSv = elipse.at(3);
+        ai[iLaw] = asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
+        ar[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
+        
+		double a = M_PI - ai[iLaw];
+		double ad = a + asin(sin(a) * (barDiameter2 / (coupling.height + barDiameter2)));
 
-		double xD3Dv = elipse.at(4);
-		double yD3Dv = elipse.at(5);
-		double zD3Dv = elipse.at(6);
+		double y1 = sin((M_PI - ad)) * barDiameter2;
+		double x0 = cos((M_PI - ad)) * barDiameter2;
+		double x1 = (barDiameter2 - x0);
 
-		double xR3Dv = elipse.at(7);
-		double yR3Dv = elipse.at(8);
-		double zR3Dv = elipse.at(9);
+		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
 
+		double distance = sqrt(pow(x2, 2.0) + pow(y2, 2.0) + pow(0, 2.0));
 
-
-		double if1;
-		double if2;
-
-		if (targets.skews[iLaw] <= 360 && targets.skews[iLaw] >= 180)
-			if2 = -(zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
-		else
-			if2 = (zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
-		
-		if (targets.skews[iLaw] <= 270 && targets.skews[iLaw] >= 90)
-			if1 = -(yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
-		else
-			if1 = (yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
-		
-
-		// Array of all the distances between the probe and the defect.
-		double* distancesArray = (double*)malloc(numberOfElements * sizeof(double));
-
-		
-		// For loop where are going to compute all possible path.
-		for (int iElem = 0; iElem < numberOfElements; iElem++)
+		if (x0 == barDiameter2)
 		{
-			double dist2 = sqrt(pow(((xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
-			- elements.coordinates.x[iElem], 2.0) 
-			+ pow((if1 * focal.length.coupling) - elements.coordinates.y[iElem], 2.0)
-			+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
+			x[iLaw] = targets.positions[iLaw];
+			y[iLaw] = 0;
 
-			distancesArray[iElem] = dist2;
+			xInt[iLaw] = 0;
+			yInt[iLaw] = 0;
 		}
-		
-		// Maximum value of tabDist array
-		double maxDistancesArray = maxArray(distancesArray, numberOfElements);
-
-		// For loop that iterate number of element times and where we are going to compute
-		// all the delay for each element (converted to milliseconds).
-		for (int iElem = 0; iElem < numberOfElements; iElem++)
-		{
-			distancesArray[iElem] = (((maxDistancesArray - distancesArray[iElem]) / coupling.velocity) * 1000);
-
-			laws[iLaw].delays[iElem] = distancesArray[iElem];
-		}
-		
-		// Release of the memory taken by distances array
-		free(distancesArray);
-
-		// Here we get the values from the newElipse function for each law.
-		alphaS[iLaw] = alphaSv;
-		xi3D[iLaw] = xI3Dv;
-		yi3D[iLaw] = yI3Dv;
-		zi3D[iLaw] = zI3Dv;
-		
-		// Get the value of remarkable x,y,z coordinates when the number of element is odd.
-		if (numberOfElements % 2 != 0) {
-			paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-			paths[iLaw].x[1] = xI3Dv;
-			paths[iLaw].x[2] = xR3Dv;
-			paths[iLaw].x[3] = xD3Dv;
-
-			paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-			paths[iLaw].y[1] = yI3Dv;
-			paths[iLaw].y[2] = yR3Dv;
-			paths[iLaw].y[3] = yD3Dv;
-
-			paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-			paths[iLaw].z[1] = zI3Dv;
-			paths[iLaw].z[2] = zR3Dv;
-			paths[iLaw].z[3] = zD3Dv;
-		}
-
-		// Get the value of remarkable x,y,z coordinates when the number of element is peer.
 		else
 		{
-			paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-			paths[iLaw].x[1] = xI3Dv;
-			paths[iLaw].x[2] = xR3Dv;
-			paths[iLaw].x[3] = xD3Dv;
+			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0);
+			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
-			paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-			paths[iLaw].y[1] = yI3Dv;
-			paths[iLaw].y[2] = yR3Dv;
-			paths[iLaw].y[3] = yD3Dv;
-
-			paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
-			paths[iLaw].z[1] = zI3Dv;
-			paths[iLaw].z[2] = zR3Dv;
-			paths[iLaw].z[3] = zD3Dv;
+			xInt[iLaw] = (barDiameter2 - x0);
+			yInt[iLaw] = y1;
 		}
 
+		z[iLaw] = targets.positions[iLaw] * (0 / distance);
+
+		zInt[iLaw] = 0;
+
+		utAngle[iLaw] = ar[iLaw] / M_PI * 180;
 	}
+
+	free(ai);
+	free(ar);
+
+	std::vector<double*> values{x, y, z, utAngle, xInt, yInt, zInt};
+
+	return values;
+}
+
+
+int Ctube::Calculate()
+{	
+	if (defectType == DEFECT_TYPE::NOTCHE)
+	{
+		// For loop that iterate the number of law that we want.
+		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+		{
+			std::vector<double> elipse = Ctube::newElipse(targets.skews[iLaw], targets.tilts[iLaw]);
+			// Here we get all the values given by the function newElipse
+			double xI3Dv = elipse.at(0);
+			double yI3Dv = elipse.at(1);
+			double zI3Dv = elipse.at(2);
+			double alphaSv = elipse.at(3);
+
+			double xD3Dv = elipse.at(4);
+			double yD3Dv = elipse.at(5);
+			double zD3Dv = elipse.at(6);
+
+			double xR3Dv = elipse.at(7);
+			double yR3Dv = elipse.at(8);
+			double zR3Dv = elipse.at(9);
+
+
+
+			double if1;
+			double if2;
+
+			if (targets.skews[iLaw] <= 360 && targets.skews[iLaw] >= 180)
+				if2 = -(zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+			else
+				if2 = (zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+			
+			if (targets.skews[iLaw] <= 270 && targets.skews[iLaw] >= 90)
+				if1 = -(yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+			else
+				if1 = (yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+			
+
+			// Array of all the distances between the probe and the defect.
+			double* distancesArray = (double*)malloc(numberOfElements * sizeof(double));
+
+			
+			// For loop where are going to compute all possible path.
+			for (int iElem = 0; iElem < numberOfElements; iElem++)
+			{
+				double dist2 = sqrt(pow(((xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
+				- elements.coordinates.x[iElem], 2.0) 
+				+ pow((if1 * focal.length.coupling) - elements.coordinates.y[iElem], 2.0)
+				+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
+
+				distancesArray[iElem] = dist2;
+			}
+			
+			// Maximum value of tabDist array
+			double maxDistancesArray = maxArray(distancesArray, numberOfElements);
+
+			// For loop that iterate number of element times and where we are going to compute
+			// all the delay for each element (converted to milliseconds).
+			for (int iElem = 0; iElem < numberOfElements; iElem++)
+			{
+				distancesArray[iElem] = (((maxDistancesArray - distancesArray[iElem]) / coupling.velocity) * 1000);
+
+				laws[iLaw].delays[iElem] = distancesArray[iElem];
+			}
+			
+			// Release of the memory taken by distances array
+			free(distancesArray);
+
+			// Here we get the values from the newElipse function for each law.
+			alphaS[iLaw] = alphaSv;
+			xi3D[iLaw] = xI3Dv;
+			yi3D[iLaw] = yI3Dv;
+			zi3D[iLaw] = zI3Dv;
+			
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[1] = xI3Dv;
+				paths[iLaw].x[2] = xR3Dv;
+				paths[iLaw].x[3] = xD3Dv;
+
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[1] = yI3Dv;
+				paths[iLaw].y[2] = yR3Dv;
+				paths[iLaw].y[3] = yD3Dv;
+
+				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[1] = zI3Dv;
+				paths[iLaw].z[2] = zR3Dv;
+				paths[iLaw].z[3] = zD3Dv;
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = xI3Dv;
+				paths[iLaw].x[2] = xR3Dv;
+				paths[iLaw].x[3] = xD3Dv;
+
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = yI3Dv;
+				paths[iLaw].y[2] = yR3Dv;
+				paths[iLaw].y[3] = yD3Dv;
+
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = zI3Dv;
+				paths[iLaw].z[2] = zR3Dv;
+				paths[iLaw].z[3] = zD3Dv;
+			}
+
+		}
+	}
+
+	else
+	{
+		double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
+        double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
+        double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
+
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+            asinTiltRad[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
+        }
+
+        double maxAngle = maxArray(asinTiltRad, numberOfTargets);
+        double minAngle = minArray(asinTiltRad, numberOfTargets);
+
+		free(asinTiltRad);
+
+        std::vector<double*> fbhValues = fbhBuilder(diameter/2);
+        
+        for (int i = 0; i < numberOfTargets; i++)
+        {
+			// Inver ici
+            zDef[i] = fbhValues[2][i];
+            yDef[i] = fbhValues[0][i] + coupling.height;
+            xDef[i] = fbhValues[1][i];
+        }
+
+        double if1;
+        double if2;
+
+        if (tan(maxAngle) * coupling.height == tan(minAngle) * coupling.height)
+        {
+            if (tan(maxAngle) * coupling.height >= 0)
+            {
+                if1 = tan(maxAngle) * coupling.height;
+                if2 = 0;
+            }
+            else
+            {
+                if1 = 0;
+                if2 = tan(minAngle) * coupling.height;
+            }
+        }
+        else
+        {
+            if1 = tan(maxAngle) * coupling.height;
+            if2 = tan(minAngle) * coupling.height;
+        }
+
+        std::vector<double> preXIntB;
+        std::vector<double> preYIntB;
+
+		// inv ici
+        double minXProbe = minArray(elements.coordinates.x, numberOfElements);
+        double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
+        double minZProbe = minArray(elements.coordinates.z, numberOfElements);
+        double maxZProbe = maxArray(elements.coordinates.z, numberOfElements);
+
+        if (numberOfElements <= 1)
+            if1 = resolution;
+        if (numberOfElements > 1)
+            if2 = abs(if2);
+        else
+            if2 = resolution;
+
+        for (int i = 0; i < ((diameter * M_PI / 2) / resolution) + 1; i++)
+        {
+            if (cos(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) * (diameter / 2)
+                >= minXProbe - if2 &&
+                cos(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) * (diameter / 2)
+                < maxXProbe + if1)
+            {	
+				// Inver ici
+                preYIntB.push_back(sin(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (diameter / 2) + (diameter / 2) + coupling.height);
+
+                preXIntB.push_back(cos(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                * (diameter / 2));
+            }
+        }
+
+		
+		std::vector<double> xIntB;
+		std::vector<double> yIntB;
+        double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+        * sizeof(double));
+
+
+        for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
+        {
+			for (int j = 0; j < preXIntB.size(); j++)
+			{
+				xIntB.push_back(preXIntB[j]);
+				yIntB.push_back(preYIntB[j]);
+			}
+            
+
+            for (int j = i * (preYIntB.size()); j < preYIntB.size() * (i + 1); j++)
+            {
+                zIntB[j] = (resolution * i) + minZProbe;
+            }
+        }
+
+		#ifdef _OPTIMIZATION
+		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
+
+        for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+        {
+			double *compar = (double *)malloc(numberOfElements * sizeof(double));
+
+			int decalage = xIntB.size() / nbGroupInt;
+
+			double addTimeElemIntDef = 0;
+
+
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            * sizeof(double));
+
+            for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+            {
+                distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
+                + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
+                + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+            }
+
+			for (int i = 0; i < numberOfElements; i++)
+			{
+				compar[i] = INFINITY;
+			}
+
+			// changement de la boucle ici
+            for (int i = 0; i < nbGroupInt; i++)
+            {
+				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
+				{
+					double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+					* sizeof(double));
+
+					distIntProbe[0] = sqrt(pow(elements.coordinates.x[i] - xIntB[0], 2.0) 
+						+ pow(elements.coordinates.y[i] - yIntB[0], 2.0) 
+						+ pow(elements.coordinates.z[i] - zIntB[0], 2.0)) / (coupling.velocity / 1000);
+
+
+					// Indexes and length for the while loop below.
+					int start = (decalage * i);
+					int end = (decalage * (i + 1)) - 1;
+					int mid = (int)((end - start) / 2);
+					int length = 0;
+
+					while (length != -1)
+					{
+						length = end - start;
+						mid = start + (int)(length / 2);
+
+						// Check if the previous time taken by the US is lower than the current.
+						if (distDefInt[mid - 1] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[mid - 1], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[mid - 1], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[mid - 1], 2.0))) / (coupling.velocity / 1000) <
+							distDefInt[mid] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[mid], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[mid], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[mid], 2.0))) / (coupling.velocity / 1000))
+						{
+							end = mid - 1;
+						}
+
+						// If the previous time taken by the US is bigger than the current we enter in this case
+						else
+						{
+							start = mid + 1;
+						}
+					}
+
+					addTimeElemIntDef = distDefInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[end], 2.0))) / (coupling.velocity / 1000);
+
+					if (compar[probeElem] > addTimeElemIntDef)
+						{
+							compar[probeElem] = addTimeElemIntDef;
+						}
+
+					free(distIntProbe);
+				}
+            }
+			// Maximum element of delayLaw array.
+			double maxDelayLaw = maxArray(compar, numberOfElements);
+			// For loop that push the delay law for each element of the probe
+			for (int iElem = 0; iElem < numberOfElements; iElem++)
+			{
+				if (maxDelayLaw - compar[iElem] == NAN)
+				{
+					return PLUGIN_INVALID_ANGLE;
+				}
+				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+			// Release of the memory taken by delayLaw array.
+			free(compar);
+
+			free(distDefInt);
+        }
+		#endif
+
+		#ifndef _OPTIMIZATION
+		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+        {
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            * sizeof(double));
+
+
+            for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+            {
+                distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
+                + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
+                + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+            }
+
+            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+                double* addDist = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+
+
+                for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+                {
+                    distIntProbe[iIntPoint] = sqrt(pow(elements.coordinates.x[iElem] - xIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.y[iElem] - yIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.z[iElem] - zIntB[iIntPoint], 2.0)) / (coupling.velocity / 1000);
+
+                    addDist[iIntPoint] = distIntProbe[iIntPoint] + distDefInt[iIntPoint];
+                }
+
+                minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+            }
+
+            double maxMinElems = maxArray(minElems, numberOfElements);
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+				if (maxMinElems - minElems[iElem] == NAN)
+				{
+					return PLUGIN_INVALID_ANGLE;
+				}
+                laws[iLaw].delays[iElem] = maxMinElems - minElems[iElem];
+            }
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+            free(minElems);
+        }
+		#endif
+
+		free(xDef);
+		free(yDef);
+		free(zDef);
+		
+		free(zIntB);
+		
+        for (int i = 0; i < fbhValues.size(); i++)
+		{
+			free(fbhValues[i]);
+		}
+	}
+	
 
 	return PLUGIN_NO_ERROR;
 }
