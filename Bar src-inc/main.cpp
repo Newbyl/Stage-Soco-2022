@@ -310,7 +310,6 @@ int main()
 	int nbPtRemar = 3;
 	int aglTy = 1;
 	int defTy = 0;
-	int proTy = 2;
 	double barDiam = 404;
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));

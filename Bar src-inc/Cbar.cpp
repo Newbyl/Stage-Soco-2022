@@ -13,6 +13,8 @@
 
 #define M_PI 3.14159265358979323846264338327950288
 
+#define _OPTIMIZATION
+
 #define strcmpi(x, y) strcasecmp((x), (y))
 #define _strnicmp(x, y, z) strncasecmp((x), (y), (z))
 
@@ -509,6 +511,10 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 	double* y = (double*)malloc(numberOfTargets * sizeof(double));
 	double* z = (double*)malloc(numberOfTargets * sizeof(double));
 
+	double* xInt = (double*)malloc(numberOfTargets * sizeof(double));
+	double* yInt = (double*)malloc(numberOfTargets * sizeof(double));
+	double* zInt = (double*)malloc(numberOfTargets * sizeof(double));
+
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
         ai[iLaw] = asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
@@ -532,15 +538,22 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 		{
 			x[iLaw] = targets.positions[iLaw];
 			y[iLaw] = 0;
+
+			xInt[iLaw] = 0;
+			yInt[iLaw] = 0;
 		}
 		else
 		{
 			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0);
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
+
+			xInt[iLaw] = (barDiameter2 - x0);
+			yInt[iLaw] = y1;
 		}
 
 		z[iLaw] = targets.positions[iLaw] * (0 / distance);
 
+		zInt[iLaw] = 0;
 
 		utAngle[iLaw] = ar[iLaw] / M_PI * 180;
 	}
@@ -548,7 +561,7 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 	free(ai);
 	free(ar);
 
-	std::vector<double*> values{x, y, z, utAngle};
+	std::vector<double*> values{x, y, z, utAngle, xInt, yInt, zInt};
 
 	return values;
 }
@@ -562,6 +575,11 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 	double* x = (double*)malloc(numberOfTargets * sizeof(double));
 	double* y = (double*)malloc(numberOfTargets * sizeof(double));
 	double* z = (double*)malloc(numberOfTargets * sizeof(double));
+
+	double* xInt = (double*)malloc(numberOfTargets * sizeof(double));
+	double* yInt = (double*)malloc(numberOfTargets * sizeof(double));
+	double* zInt = (double*)malloc(numberOfTargets * sizeof(double));
+
 
 	double* focalLength = (double*)malloc(numberOfTargets * sizeof(double));
 
@@ -603,12 +621,16 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 		x[iLaw] = x2 + x1;
 		y[iLaw] = y2 + y1;
 		z[iLaw] = 0;
+
+		xInt[iLaw] = x1;
+		yInt[iLaw] = y1;
+		zInt[iLaw] = 0;
 	}
 
 	free(ai);
 	free(ar);
 
-	std::vector<double*> values{x, y, z, utAngle, focalLength};
+	std::vector<double*> values{x, y, z, utAngle, focalLength, xInt, yInt, zInt};
 
 	return values;
 }
@@ -616,8 +638,6 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 
 int Cbar::Calculate()
 {
-	using namespace std;
-
     if (defectType == DEFECT_TYPE::FBH){
         double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
@@ -634,7 +654,7 @@ int Cbar::Calculate()
 
 		free(asinTiltRad);
 
-        vector<double*> fbhValues = fbhBuilder(barDiameter/2);
+        std::vector<double*> fbhValues = fbhBuilder(barDiameter/2);
         
         for (int i = 0; i < numberOfTargets; i++)
         {
@@ -642,11 +662,6 @@ int Cbar::Calculate()
             xDef[i] = fbhValues[0][i] + coupling.height;
             yDef[i] = fbhValues[1][i];
         }
-
-		for (int i = 0; i < fbhValues.size(); i++)
-		{
-			free(fbhValues[i]);
-		}
 
         double if1;
         double if2;
@@ -670,8 +685,8 @@ int Cbar::Calculate()
             if2 = tan(minAngle) * coupling.height;
         }
 
-        vector<double> preXIntB;
-        vector<double> preYIntB;
+        std::vector<double> preXIntB;
+        std::vector<double> preYIntB;
 
         double minYProbe = minArray(elements.coordinates.y, numberOfElements);
         double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
@@ -701,8 +716,8 @@ int Cbar::Calculate()
         }
 
 
-		vector<double> xIntB;
-		vector<double> yIntB;
+		std::vector<double> xIntB;
+		std::vector<double> yIntB;
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
@@ -722,6 +737,7 @@ int Cbar::Calculate()
             }
         }
 		
+		#ifdef _OPTIMIZATION
 		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
 
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
@@ -801,8 +817,42 @@ int Cbar::Calculate()
 			// For loop that push the delay law for each element of the probe
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
-
+				if (maxDelayLaw - compar[iElem] == NAN)
+				{
+					return PLUGIN_INVALID_ANGLE;
+				}
 				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
 			}
 
 			// Release of the memory taken by delayLaw array.
@@ -810,14 +860,96 @@ int Cbar::Calculate()
 
 			free(distDefInt);
         }
-		
+		#endif
+
+		#ifndef _OPTIMIZATION
+		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+        {
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            * sizeof(double));
+
+
+            for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+            {
+                distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
+                + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
+                + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+            }
+
+            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+                double* addDist = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+
+
+                for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+                {
+                    distIntProbe[iIntPoint] = sqrt(pow(elements.coordinates.x[iElem] - xIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.y[iElem] - yIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.z[iElem] - zIntB[iIntPoint], 2.0)) / (coupling.velocity / 1000);
+
+                    addDist[iIntPoint] = distIntProbe[iIntPoint] + distDefInt[iIntPoint];
+                }
+
+                minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+            }
+
+            double maxMinElems = maxArray(minElems, numberOfElements);
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                laws[iLaw].delays[iElem] = maxMinElems - minElems[iElem];
+            }
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = fbhValues[6][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+            free(minElems);
+        }
+		#endif
+
 		free(xDef);
 		free(yDef);
 		free(zDef);
 		
 		free(zIntB);
 		
-        
+        for (int i = 0; i < fbhValues.size(); i++)
+		{
+			free(fbhValues[i]);
+		}
     }
 
     else
@@ -843,7 +975,7 @@ int Cbar::Calculate()
         double minAngle = minArray(asinNotcheRad, numberOfTargets);
 		
 		free(asinNotcheRad);
-        vector<double*> notcheValues = notcheBuilder(barDiameter/2);
+        std::vector<double*> notcheValues = notcheBuilder(barDiameter/2);
 
         for (int i = 0; i < numberOfTargets; i++)
         {
@@ -851,10 +983,6 @@ int Cbar::Calculate()
             xDef[i] = notcheValues[0][i] + coupling.height;
             yDef[i] = notcheValues[1][i];
         }
-
-		for (int i =0; i < notcheValues.size(); i++){
-			free(notcheValues[i]);
-		}
 
         double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
 
@@ -874,7 +1002,6 @@ int Cbar::Calculate()
         }
 
         
-
         double if1;
         double if2;
 
@@ -897,8 +1024,8 @@ int Cbar::Calculate()
             if2 = tan(minAngle) * coupling.height;
         }
 
-        vector<double> preXIntB;
-        vector<double> preYIntB;
+        std::vector<double> preXIntB;
+        std::vector<double> preYIntB;
 
         double minYProbe = minArray(elements.coordinates.y, numberOfElements);
         double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
@@ -928,8 +1055,8 @@ int Cbar::Calculate()
             }
         }
 
-		vector<double> xIntB;
-		vector<double> yIntB;
+		std::vector<double> xIntB;
+		std::vector<double> yIntB;
 		double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
 		* sizeof(double));
 
@@ -948,6 +1075,7 @@ int Cbar::Calculate()
             }
         }
 
+		#ifdef _OPTIMIZATION
 		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
 		
 
@@ -968,9 +1096,6 @@ int Cbar::Calculate()
                 distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
                 + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
                 + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
-
-				if(iLaw == 15)
-					cout << pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) << endl;
             }
 
 
@@ -1034,13 +1159,128 @@ int Cbar::Calculate()
 			// For loop that push the delay law for each element of the probe
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
+				if (maxDelayLaw - compar[iElem] == NAN)
+				{
+					return PLUGIN_INVALID_ANGLE;
+				}
 				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
 			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+				if (numberOfElements % 2 != 0) {
+					paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+					paths[iLaw].x[1] = notcheValues[5][iLaw];
+					paths[iLaw].x[2] = xDef[iLaw];
+
+					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+					paths[iLaw].y[1] = notcheValues[6][iLaw];
+					paths[iLaw].y[2] = yDef[iLaw];
+
+					paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+					paths[iLaw].z[1] = notcheValues[7][iLaw];
+					paths[iLaw].z[2] = zDef[iLaw];
+				}
+
+				// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+				else
+				{
+					paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].x[1] = notcheValues[5][iLaw];
+					paths[iLaw].x[2] = xDef[iLaw];
+
+					paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].y[1] = notcheValues[6][iLaw];
+					paths[iLaw].y[2] = yDef[iLaw];
+
+					paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+					paths[iLaw].z[1] = notcheValues[7][iLaw];
+					paths[iLaw].z[2] = zDef[iLaw];
+				}
+
+
 
 			// Release of the memory taken by delayLaw array.
 			free(compar);
 			free(distDefInt);
 		}
+		#endif
+
+		#ifndef _OPTIMIZATION
+		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+        {
+            double* distDefInt = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+            * sizeof(double));
+
+            for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+            {
+                distDefInt[iIntPoint] = sqrt(pow(xDef[iLaw] - xIntB[iIntPoint], 2.0) 
+                + pow(yDef[iLaw] - yIntB[iIntPoint], 2.0) 
+                + pow(zDef[iLaw] - zIntB[iIntPoint], 2.0)) / (material.velocity / 1000);
+            }
+
+            double* minElems = (double*)malloc(numberOfElements * sizeof(double));
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                double* distIntProbe = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+                double* addDist = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
+                * sizeof(double));
+
+
+                for (int iIntPoint = 0; iIntPoint < (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size(); iIntPoint++)
+                {
+                    distIntProbe[iIntPoint] = sqrt(pow(elements.coordinates.x[iElem] - xIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.y[iElem] - yIntB[iIntPoint], 2.0) 
+                    + pow(elements.coordinates.z[iElem] - zIntB[iIntPoint], 2.0)) / (coupling.velocity / 1000);
+
+                    addDist[iIntPoint] = distIntProbe[iIntPoint] + distDefInt[iIntPoint];
+                }
+
+                minElems[iElem] = minArray(addDist, (((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size());
+            }
+
+            double maxMinElems = maxArray(minElems, numberOfElements);
+
+            for (int iElem = 0; iElem < numberOfElements; iElem++)
+            {
+                laws[iLaw].delays[iElem] = maxMinElems - minElems[iElem];
+            }
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
+				paths[iLaw].x[1] = notcheValues[5][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
+				paths[iLaw].y[1] = notcheValues[6][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[1] = notcheValues[7][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].x[1] = notcheValues[5][iLaw];
+				paths[iLaw].x[2] = xDef[iLaw];
+
+				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].y[1] = notcheValues[6][iLaw];
+				paths[iLaw].y[2] = yDef[iLaw];
+
+				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[1] = notcheValues[7][iLaw];
+				paths[iLaw].z[2] = zDef[iLaw];
+			}
+
+            free(minElems);
+        }
+		#endif
 		
 		free(xDef);
 		free(yDef);
@@ -1049,8 +1289,11 @@ int Cbar::Calculate()
 		free(deflexionAngle);
 
 		free(zIntB);
-		
 
+		for (int i =0; i < notcheValues.size(); i++)
+		{
+			free(notcheValues[i]);
+		}
     }
 
 
