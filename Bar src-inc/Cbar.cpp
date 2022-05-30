@@ -658,9 +658,10 @@ int Cbar::Calculate()
         
         for (int i = 0; i < numberOfTargets; i++)
         {
+			// inv ici
             zDef[i] = fbhValues[2][i];
-            xDef[i] = fbhValues[0][i] + coupling.height;
-            yDef[i] = fbhValues[1][i];
+            yDef[i] = fbhValues[0][i] + coupling.height;
+            xDef[i] = fbhValues[1][i];
         }
 
         double if1;
@@ -687,9 +688,9 @@ int Cbar::Calculate()
 
         std::vector<double> preXIntB;
         std::vector<double> preYIntB;
-
-        double minYProbe = minArray(elements.coordinates.y, numberOfElements);
-        double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
+		//inv ici
+        double minXProbe = minArray(elements.coordinates.x, numberOfElements);
+        double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
         double minZProbe = minArray(elements.coordinates.z, numberOfElements);
         double maxZProbe = maxArray(elements.coordinates.z, numberOfElements);
 
@@ -703,14 +704,15 @@ int Cbar::Calculate()
         for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
         {
             if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
-                >= minYProbe - if2 &&
+                >= minXProbe - if2 &&
                 cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
-                < maxYProbe + if1)
+                < maxXProbe + if1)
             {
-                preXIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+				// inv ici
+                preYIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2) + (barDiameter / 2) + coupling.height);
 
-                preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                preXIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2));
             }
         }
@@ -979,9 +981,10 @@ int Cbar::Calculate()
 
         for (int i = 0; i < numberOfTargets; i++)
         {
+			// inv ici
             zDef[i] = notcheValues[2][i];
-            xDef[i] = notcheValues[0][i] + coupling.height;
-            yDef[i] = notcheValues[1][i];
+            yDef[i] = notcheValues[0][i] + coupling.height;
+            xDef[i] = notcheValues[1][i];
         }
 
         double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
@@ -1026,9 +1029,9 @@ int Cbar::Calculate()
 
         std::vector<double> preXIntB;
         std::vector<double> preYIntB;
-
-        double minYProbe = minArray(elements.coordinates.y, numberOfElements);
-        double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
+		//inv ici
+        double minXProbe = minArray(elements.coordinates.x, numberOfElements);
+        double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
         double minZProbe = minArray(elements.coordinates.z, numberOfElements);
         double maxZProbe = maxArray(elements.coordinates.z, numberOfElements);
 
@@ -1043,14 +1046,15 @@ int Cbar::Calculate()
         for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
         {
             if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
-                >= minYProbe - if2 &&
+                >= minXProbe - if2 &&
                 cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
-                < maxYProbe + if1)
+                < maxXProbe + if1)
             {
-                preXIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+				//inv ici
+                preYIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2) + (barDiameter / 2) + coupling.height);
 
-                preYIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
+                preXIntB.push_back(cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2));
             }
         }

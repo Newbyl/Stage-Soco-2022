@@ -304,12 +304,12 @@ int main()
 
 
 	int nbElem = 127;
-	int nbLaw = 1;
+	int nbLaw = 16;
 	double matcel = 3230.0;
 	double ch = 70;
 	int nbPtRemar = 3;
 	int aglTy = 1;
-	int defTy = 0;
+	int defTy = 1;
 	double barDiam = 404;
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
@@ -320,8 +320,8 @@ int main()
 	Cbar cbar;
 	cbar.Open();
 
-	cbar.Set("Elements.coordinates.x", UNIT_mm, &nbElem, xP);
-	cbar.Set("Elements.coordinates.y", UNIT_mm, &nbElem, yP);
+	cbar.Set("Elements.coordinates.x", UNIT_mm, &nbElem, yP);
+	cbar.Set("Elements.coordinates.y", UNIT_mm, &nbElem, xP);
 	cbar.Set("Elements.Coordinates.z", UNIT_mm, &nbElem, zP);
 	
 	cbar.Set("Targets.Tilts", UNIT_deg, &nbLaw, tilts);
