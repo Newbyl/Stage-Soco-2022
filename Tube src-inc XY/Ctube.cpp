@@ -839,6 +839,9 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 	double* yInt = (double*)malloc(numberOfTargets * sizeof(double));
 	double* zInt = (double*)malloc(numberOfTargets * sizeof(double));
 
+	double minXprobe = minArray(elements.coordinates.x, numberOfElements);
+	double maxXprobe = maxArray(elements.coordinates.x, numberOfElements);
+
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
         ai[iLaw] = asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
@@ -858,7 +861,7 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 
 		if (x0 == barDiameter2)
 		{
-			x[iLaw] = targets.positions[iLaw];
+			x[iLaw] = targets.positions[iLaw] + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = 0;
 
 			xInt[iLaw] = 0;
@@ -866,7 +869,7 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 		}
 		else
 		{
-			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0);
+			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
 			xInt[iLaw] = (barDiameter2 - x0);
@@ -893,6 +896,9 @@ int Ctube::Calculate()
 {	
 	if (defectType == DEFECT_TYPE::NOTCHE)
 	{
+		double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
+		double minXProbe = minArray(elements.coordinates.x, numberOfElements);
+
 		// For loop that iterate the number of law that we want.
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
@@ -929,13 +935,12 @@ int Ctube::Calculate()
 
 			// Array of all the distances between the probe and the defect.
 			double* distancesArray = (double*)malloc(numberOfElements * sizeof(double));
-
 			
 			// For loop where are going to compute all possible path.
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
 				double dist2 = sqrt(pow(((xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
-				- elements.coordinates.x[iElem], 2.0) 
+				- elements.coordinates.x[iElem] + (((maxXProbe - minXProbe ) / 2) + minXProbe), 2.0) 
 				+ pow((if1 * focal.length.coupling) - elements.coordinates.y[iElem], 2.0)
 				+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
 

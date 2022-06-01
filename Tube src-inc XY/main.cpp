@@ -440,23 +440,23 @@ double zP[127] = {0,
 	5.31796	
 	};
 
-	//double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+	double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
 	double obl[16] = {0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5};
 	
-	double ang[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	//double ang[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
 	//double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
 	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 
 
 	int nbElem = 127;
 	int nbLaw = 16;
-	double ch = 70;
+	double ch = 35;
 	int nbPtRemar = 3;
-	double diam = 404;
+	double diam = 100;
 	double thickness = 16;
-	double focalL = 10000;
-	double intCel = 1480.0;
-	int defTy = 1;
+	double focalL = 10000.0;
+	double intCel = 1500.0;
+	int defTy = 0;
 
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
@@ -504,7 +504,7 @@ double zP[127] = {0,
 	
 	for (int i = 0; i < nbLaw * nbElem; i++)
 	{
-		cout << "i : " << i << " " << la[i] << endl;
+		cout << la[i] << endl;
 	}
 	/*
 	for (int i = 0; i < nbLaw; i++)
