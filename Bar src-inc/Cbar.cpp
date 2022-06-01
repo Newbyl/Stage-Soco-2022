@@ -515,28 +515,32 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 	double* yInt = (double*)malloc(numberOfTargets * sizeof(double));
 	double* zInt = (double*)malloc(numberOfTargets * sizeof(double));
 
+	double minXprobe = minArray(elements.coordinates.x, numberOfElements);
+	double maxXprobe = maxArray(elements.coordinates.x, numberOfElements);
+
+	// For loop that iterate number of law that we want 
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
         ai[iLaw] = asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI));
         ar[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
         
-        
-
 		double a = M_PI - ai[iLaw];
 		double ad = a + asin(sin(a) * (barDiameter2 / (coupling.height + barDiameter2)));
 
-		double y1 = sin((M_PI - ad)) * barDiameter2;
 		double x0 = cos((M_PI - ad)) * barDiameter2;
-		double x1 = (barDiameter2 - x0);
+		double y1 = sin((M_PI - ad)) * barDiameter2;	// Y coordinate of the interface
+		double x1 = (barDiameter2 - x0);				// X coordinate of the interface
 
+		// X coordinate of the defect
 		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		// Y coordinate of the defect
 		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
-
+		// Calculation of 
 		double distance = sqrt(pow(x2, 2.0) + pow(y2, 2.0) + pow(0, 2.0));
 
 		if (x0 == barDiameter2)
 		{
-			x[iLaw] = targets.positions[iLaw];
+			x[iLaw] = targets.positions[iLaw] + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = 0;
 
 			xInt[iLaw] = 0;
@@ -544,7 +548,7 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 		}
 		else
 		{
-			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0);
+			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);;
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
 			xInt[iLaw] = (barDiameter2 - x0);
@@ -580,9 +584,12 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 	double* yInt = (double*)malloc(numberOfTargets * sizeof(double));
 	double* zInt = (double*)malloc(numberOfTargets * sizeof(double));
 
+	double minXprobe = minArray(elements.coordinates.x, numberOfElements);
+	double maxXprobe = maxArray(elements.coordinates.x, numberOfElements);
+
 
 	double* focalLength = (double*)malloc(numberOfTargets * sizeof(double));
-
+	
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
 		if (angleType == ANGLE_TYPE::TRANSMITED)
@@ -618,7 +625,7 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 		double x2 = h * sin(d);
 		double y2 = h * cos(d);
 
-		x[iLaw] = x2 + x1;
+		x[iLaw] = x2 + x1 + (((maxXprobe - minXprobe) / 2) + minXprobe);
 		y[iLaw] = y2 + y1;
 		z[iLaw] = 0;
 
@@ -635,16 +642,17 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 	return values;
 }
 
-
 int Cbar::Calculate()
 {
+	// This if case handle when the defect type selected is FBH.
     if (defectType == DEFECT_TYPE::FBH){
         double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
 
-        for (int i = 0; i < numberOfTargets; i++)
+
+        for (size_t i = 0; i < numberOfTargets; i++)
         {
             asinTiltRad[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
         }
@@ -658,7 +666,6 @@ int Cbar::Calculate()
         
         for (int i = 0; i < numberOfTargets; i++)
         {
-			// inv ici
             zDef[i] = fbhValues[2][i];
             yDef[i] = fbhValues[0][i] + coupling.height;
             xDef[i] = fbhValues[1][i];
@@ -688,7 +695,8 @@ int Cbar::Calculate()
 
         std::vector<double> preXIntB;
         std::vector<double> preYIntB;
-		//inv ici
+
+		// Find the min and max element of X and Y arrays
         double minXProbe = minArray(elements.coordinates.x, numberOfElements);
         double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
         double minZProbe = minArray(elements.coordinates.z, numberOfElements);
@@ -701,6 +709,7 @@ int Cbar::Calculate()
         else
             if2 = resolution;
 
+		// This for loop is here to compute the interface points on X and Y axis
         for (int i = 0; i < ((barDiameter * M_PI / 2) / resolution) + 1; i++)
         {
             if (cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
@@ -708,7 +717,6 @@ int Cbar::Calculate()
                 cos(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) * (barDiameter / 2)
                 < maxXProbe + if1)
             {
-				// inv ici
                 preYIntB.push_back(sin(((M_PI / ((barDiameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (barDiameter / 2) + (barDiameter / 2) + coupling.height);
 
@@ -717,13 +725,13 @@ int Cbar::Calculate()
             }
         }
 
-
 		std::vector<double> xIntB;
 		std::vector<double> yIntB;
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
-
+		// This for loop is here to duplicate the interface points coordinates on X and Y axis and to calculate
+		// Z coordinate.
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
 			for (int j = 0; j < preXIntB.size(); j++)
@@ -739,7 +747,11 @@ int Cbar::Calculate()
             }
         }
 		
+		// If _OPTIMIZATION is defined in the header file (Cbar.h), we are going to enter in this case
+		// where we are going to find the minimum time for he US to go from the point to the focal point.
+		// This optimized version uses an modified version of dichotomy that work in parabolas.
 		#ifdef _OPTIMIZATION
+		// This variable is the number of parabola that we will have.
 		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
 
         for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
@@ -790,6 +802,9 @@ int Cbar::Calculate()
 						length = end - start;
 						mid = start + (int)(length / 2);
 
+						if (mid == 0 || mid == xIntB.size())
+							break;
+
 						// Check if the previous time taken by the US is lower than the current.
 						if (distDefInt[mid - 1] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[mid - 1], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[mid - 1], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[mid - 1], 2.0))) / (coupling.velocity / 1000) <
 							distDefInt[mid] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[mid], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[mid], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[mid], 2.0))) / (coupling.velocity / 1000))
@@ -807,9 +822,9 @@ int Cbar::Calculate()
 					addTimeElemIntDef = distDefInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntB[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntB[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntB[end], 2.0))) / (coupling.velocity / 1000);
 
 					if (compar[probeElem] > addTimeElemIntDef)
-						{
-							compar[probeElem] = addTimeElemIntDef;
-						}
+					{
+						compar[probeElem] = addTimeElemIntDef;
+					}
 
 					free(distIntProbe);
 				}
@@ -864,6 +879,8 @@ int Cbar::Calculate()
         }
 		#endif
 
+		// If _OPTIMIZATION is not defined in the header file we are going to use the non-optimized version of the algorithm
+		// to find the minimum time for the US to go from the probe element to the focal
 		#ifndef _OPTIMIZATION
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
         {
@@ -942,18 +959,20 @@ int Cbar::Calculate()
         }
 		#endif
 
+		// Release of the memory taken by x/y/zDef and zIntB
 		free(xDef);
 		free(yDef);
 		free(zDef);
 		
 		free(zIntB);
 		
-        for (int i = 0; i < fbhValues.size(); i++)
+        for (size_t i = 0; i < fbhValues.size(); i++)
 		{
 			free(fbhValues[i]);
 		}
     }
 
+	// This else handle the case when the defect type selected is Notche.
     else
     {
         double* asinNotcheRad = (double*)malloc(numberOfTargets * sizeof(double));
@@ -972,16 +991,17 @@ int Cbar::Calculate()
                 asinNotcheRad[i] = targets.notchesAngles[i] / 180 * M_PI;
             }
         }
-
+		
+		// Find the minimum and maximum elements of asinNotcheRad array
         double maxAngle = maxArray(asinNotcheRad, numberOfTargets);
         double minAngle = minArray(asinNotcheRad, numberOfTargets);
 		
 		free(asinNotcheRad);
         std::vector<double*> notcheValues = notcheBuilder(barDiameter/2);
 
+		// For loop where we get x,y,z coordinates of notches
         for (int i = 0; i < numberOfTargets; i++)
         {
-			// inv ici
             zDef[i] = notcheValues[2][i];
             yDef[i] = notcheValues[0][i] + coupling.height;
             xDef[i] = notcheValues[1][i];
@@ -989,6 +1009,7 @@ int Cbar::Calculate()
 
         double* deflexionAngle = (double*)malloc(numberOfTargets * sizeof(double));
 
+		// For loop that calculate the deflexion angle following the angle type
         for (int i = 0; i < numberOfTargets; i++)
         {
             if (angleType == ANGLE_TYPE::TRANSMITED)

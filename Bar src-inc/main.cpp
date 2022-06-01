@@ -38,8 +38,8 @@ int main()
 	// Sonde sectorielle 127 éléments
 	
 	double tilts[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-	//double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
-	double notch[1] = { 30 };
+	double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	//double notch[1] = { 30 };
 	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 
 	double yP[127]{0,
@@ -309,7 +309,7 @@ int main()
 	double ch = 70;
 	int nbPtRemar = 3;
 	int aglTy = 1;
-	int defTy = 1;
+	int defTy = 0;
 	double barDiam = 404;
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
