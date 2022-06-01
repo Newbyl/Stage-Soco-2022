@@ -500,7 +500,7 @@ int Cplate::Calculate()
 			// For loop that compute the distance between probe element and focal point and push it into distances array.
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
-				distances[iElem] = sqrt(pow((cos(targets.tilts[iLaw]) * positionProjection[iLaw]) - elements.coordinates.y[iElem], 2.0) + pow((cos(targets.skews[iLaw]) * (sin(targets.tilts[iLaw]) * positionProjection[iLaw])) - elements.coordinates.x[iElem], 2.0) + pow(((sin(targets.tilts[iLaw]) * positionProjection[iLaw]) * sin(targets.skews[iLaw])) - elements.coordinates.z[iElem], 2.0));
+				distances[iElem] = sqrt(pow((cos(targets.tilts[iLaw]) * positionProjection[iLaw]) - elements.coordinates.y[iElem], 2.0) + pow((cos(targets.skews[iLaw]) * (sin(targets.tilts[iLaw]) * positionProjection[iLaw])) - elements.coordinates.x[iElem] + (((maxXProbe - minXProbe) / 2) + minXProbe), 2.0) + pow(((sin(targets.tilts[iLaw]) * positionProjection[iLaw]) * sin(targets.skews[iLaw])) - elements.coordinates.z[iElem], 2.0));
 			}
 
 			// Maximum value of distances array.
@@ -559,9 +559,10 @@ int Cplate::Calculate()
 		// For loop that compute x,y,z coordinates of flat bottom holes and push them into their respectives array.
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
-			double yFhb = (cos(targets.tilts[iLaw]) * targets.positions[iLaw]) + coupling.height;
+			double yFhb = ((cos(targets.tilts[iLaw]) * targets.positions[iLaw]) + coupling.height);
 
-			double xFhb = ((tan(asin((sin(targets.tilts[iLaw]) * coupling.velocity) / material.velocity)) * coupling.height) + (sin(targets.tilts[iLaw]) * targets.positions[iLaw])) * cos(targets.skews[iLaw]);
+			double xFhb = ((tan(asin((sin(targets.tilts[iLaw]) * coupling.velocity) / material.velocity)) * coupling.height) + (sin(targets.tilts[iLaw]) * targets.positions[iLaw])) * cos(targets.skews[iLaw])
+			+ (((maxXProbe - minXProbe) / 2) + minXProbe);
 
 			double zFhb = ((tan(asin((sin(targets.tilts[iLaw]) * coupling.velocity) / material.velocity)) * coupling.height) + (sin(targets.tilts[iLaw]) * targets.positions[iLaw])) * sin(targets.skews[iLaw]);
 
@@ -826,6 +827,9 @@ int Cplate::Calculate()
 						{
 							length = end - start;
 							mid = start + (int)(length / 2);
+
+							if (mid == 0 || mid == xIntP.size())
+								break;
 
 							// Check if the previous time taken by the US is lower than the current.
 							if (timeFbhInt[mid - 1] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[mid - 1], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[mid - 1], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[mid - 1], 2.0))) / (coupling.velocity / 1000) <
