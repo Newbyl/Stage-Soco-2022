@@ -413,54 +413,71 @@ int Ctube::Get(const char *param_name, int unit, int *dim1, int *dim2, double *v
 
 	if (strcmpi(param_name, "Paths.x") == 0)
 	{
+		
+		int nbPointsRemarkable = 4;
+
+		if (defectType == DEFECT_TYPE::FBH)
+			nbPointsRemarkable = 3;
+		
+
 		if (!calculationDone)
 			return PLUGIN_DATA_NOT_READY;
 		if (*dim1 < numberOfTargets)
 			return PLUGIN_DIM1_TOO_SMALL;
-		if (*dim2 < 3)
+		if (*dim2 < nbPointsRemarkable)
 			return PLUGIN_DIM2_TOO_SMALL;
 
 		for (int iTarget = 0; iTarget < numberOfTargets; iTarget++)
 		{
-			for (int iPoint = 0; iPoint < 3; iPoint++)
+			for (int iPoint = 0; iPoint < nbPointsRemarkable; iPoint++)
 			{
-				*(value + iTarget * 3 + iPoint) = Unit::ChangeUnit(paths[iTarget].x[iPoint], UNIT_mm, unit);
+				*(value + iTarget * nbPointsRemarkable + iPoint) = Unit::ChangeUnit(paths[iTarget].x[iPoint], UNIT_mm, unit);
 			}
 		}
 		return PLUGIN_NO_ERROR;
 	}
 	if (strcmpi(param_name, "Paths.y") == 0)
 	{
+		int nbPointsRemarkable = 4;
+
+		if (defectType == DEFECT_TYPE::FBH)
+			nbPointsRemarkable = 3;
+
 		if (!calculationDone)
 			return PLUGIN_DATA_NOT_READY;
 		if (*dim1 < numberOfTargets)
 			return PLUGIN_DIM1_TOO_SMALL;
-		if (*dim2 < 3)
+		if (*dim2 < nbPointsRemarkable)
 			return PLUGIN_DIM2_TOO_SMALL;
 
 		for (int iTarget = 0; iTarget < numberOfTargets; iTarget++)
 		{
-			for (int iPoint = 0; iPoint < 3; iPoint++)
+			for (int iPoint = 0; iPoint < nbPointsRemarkable; iPoint++)
 			{
-				*(value + iTarget * 3 + iPoint) = Unit::ChangeUnit(paths[iTarget].y[iPoint], UNIT_mm, unit);
+				*(value + iTarget * nbPointsRemarkable + iPoint) = Unit::ChangeUnit(paths[iTarget].y[iPoint], UNIT_mm, unit);
 			}
 		}
 		return PLUGIN_NO_ERROR;
 	}
 	if (strcmpi(param_name, "Paths.z") == 0)
 	{
+		int nbPointsRemarkable = 4;
+
+		if (defectType == DEFECT_TYPE::FBH)
+			nbPointsRemarkable = 3;
+
 		if (!calculationDone)
 			return PLUGIN_DATA_NOT_READY;
 		if (*dim1 < numberOfTargets)
 			return PLUGIN_DIM1_TOO_SMALL;
-		if (*dim2 < 3)
+		if (*dim2 < nbPointsRemarkable)
 			return PLUGIN_DIM2_TOO_SMALL;
 
 		for (int iTarget = 0; iTarget < numberOfTargets; iTarget++)
 		{
-			for (int iPoint = 0; iPoint < 3; iPoint++)
+			for (int iPoint = 0; iPoint < nbPointsRemarkable; iPoint++)
 			{
-				*(value + iTarget * 3 + iPoint) = Unit::ChangeUnit(paths[iTarget].z[iPoint], UNIT_mm, unit);
+				*(value + iTarget * nbPointsRemarkable + iPoint) = Unit::ChangeUnit(paths[iTarget].z[iPoint], UNIT_mm, unit);
 			}
 		}
 		return PLUGIN_NO_ERROR;
@@ -807,14 +824,19 @@ std::vector<double> Ctube::newElipse(double skew, double alphaI)
 
 	// Coordinate of the defect
 	// Inversion x y 
-	double yd3D = abs(m1PhC(0));
-	double xd3D = abs(m1PhC(1));
-	double zd3D = abs(m1PhC(2));
+	double yDef = m1PhC(0);
+	double xDef = m1PhC(1);
+	double zDef = m1PhC(2);
 	
 	// Coordinates of the reflex in the tube
-	double yAlpha3D = abs(m2PhC(0));
-	double xAlpha3D = abs(m2PhC(1));
-	double zAlpha3D = abs(m2PhC(2));
+	double yRef = m2PhC(0);
+	double xRef = m2PhC(1);
+	double zRef = m2PhC(2);
+
+	// PT interface remark
+	double yInter = m3PhC(0);
+	double xInter = m3PhC(1);
+	double zInter = m3PhC(2);
 
 	// Coordonné du point d'interface
 	double yi3D = abs(m3PhC(0));
@@ -826,7 +848,7 @@ std::vector<double> Ctube::newElipse(double skew, double alphaI)
 	double alphaS = acos(yi3D / sqrt(pow(yi3D, 2.0) + pow(xi3D, 2.0) + pow(zi3D, 2.0))) / M_PI * 180;
 
 	// Here we get all the values in a vector to use them in Calculate function.
-	vector<double> returnVal {xi3D, yi3D, zi3D, alphaS, xd3D, yd3D, zd3D, xAlpha3D, yAlpha3D, zAlpha3D};
+	vector<double> returnVal {xi3D, yi3D, zi3D, alphaS, xDef, yDef, zDef, xRef, yRef, zRef, xInter, yInter, zInter};
 
 	return returnVal;
 }
@@ -880,8 +902,8 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
-			xInt[iLaw] = (barDiameter2 - x0);
-			yInt[iLaw] = y1;
+			xInt[iLaw] = (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
+			yInt[iLaw] = y1 + coupling.height;
 		}
 
 		z[iLaw] = targets.positions[iLaw] * (0 / distance);
@@ -911,19 +933,24 @@ int Ctube::Calculate()
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
 			std::vector<double> elipse = Ctube::newElipse(targets.skews[iLaw], targets.tilts[iLaw]);
+
 			// Here we get all the values given by the function newElipse
 			double xI3Dv = elipse.at(0) + tubeOffset;
 			double yI3Dv = elipse.at(1);
 			double zI3Dv = elipse.at(2);
 			double alphaSv = elipse.at(3);
 
-			double xD3Dv = elipse.at(4);
-			double yD3Dv = elipse.at(5);
-			double zD3Dv = elipse.at(6);
+			double xDef = elipse.at(4);
+			double yDef = elipse.at(5);
+			double zDef = elipse.at(6);
 
-			double xR3Dv = elipse.at(7);
-			double yR3Dv = elipse.at(8);
-			double zR3Dv = elipse.at(9);
+			double xRef = elipse.at(7);
+			double yRef = elipse.at(8);
+			double zRef = elipse.at(9);
+
+			double xInter = elipse.at(10);
+			double yInter = elipse.at(11);
+			double zInter = elipse.at(12);
 
 
 
@@ -939,7 +966,6 @@ int Ctube::Calculate()
 				if1 = -(xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			else
 				if1 = (xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
-			
 			
 			// Array of all the distances between the probe and the defect.
 			double* distancesArray = (double*)malloc(numberOfElements * sizeof(double));
@@ -983,38 +1009,38 @@ int Ctube::Calculate()
 			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
 			if (numberOfElements % 2 != 0) {
 				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = xI3Dv;
-				paths[iLaw].x[2] = xR3Dv;
-				paths[iLaw].x[3] = xD3Dv;
+				paths[iLaw].x[1] = xInter;
+				paths[iLaw].x[2] = xRef;
+				paths[iLaw].x[3] = xDef;
 
 				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = yI3Dv;
-				paths[iLaw].y[2] = yR3Dv;
-				paths[iLaw].y[3] = yD3Dv;
+				paths[iLaw].y[1] = yInter;
+				paths[iLaw].y[2] = yRef;
+				paths[iLaw].y[3] = yDef;
 
 				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-				paths[iLaw].z[1] = zI3Dv;
-				paths[iLaw].z[2] = zR3Dv;
-				paths[iLaw].z[3] = zD3Dv;
+				paths[iLaw].z[1] = zInter;
+				paths[iLaw].z[2] = zRef;
+				paths[iLaw].z[3] = zDef;
 			}
 
 			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
 			else
 			{
 				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].x[1] = xI3Dv;
-				paths[iLaw].x[2] = xR3Dv;
-				paths[iLaw].x[3] = xD3Dv;
+				paths[iLaw].x[1] = xInter;
+				paths[iLaw].x[2] = xRef;
+				paths[iLaw].x[3] = xDef;
 
 				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].y[1] = yI3Dv;
-				paths[iLaw].y[2] = yR3Dv;
-				paths[iLaw].y[3] = yD3Dv;
+				paths[iLaw].y[1] = yInter;
+				paths[iLaw].y[2] = yRef;
+				paths[iLaw].y[3] = yDef;
 
 				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].z[1] = zI3Dv;
-				paths[iLaw].z[2] = zR3Dv;
-				paths[iLaw].z[3] = zD3Dv;
+				paths[iLaw].z[1] = zInter;
+				paths[iLaw].z[2] = zRef;
+				paths[iLaw].z[3] = zDef;
 			}
 
 		}

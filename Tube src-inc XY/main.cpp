@@ -7,16 +7,19 @@ using namespace std;
 int main()
 {
 	// Sonde linéaire 64 éléments
-	/*
+	
 	double yP[64]{-18.9, -18.3, -17.7, -17.1, -16.5, -15.9, -15.3, -14.7, -14.1, -13.5, -12.9, -12.3, -11.7, -11.1, -10.5, -9.9, -9.3, -8.7, -8.1, -7.5, -6.9, -6.3, -5.7, -5.1, -4.5, -3.9, -3.3, -2.7,
 				-2.1, -1.5, -0.9, -0.3, 0.3, 0.9, 1.5, 2.1, 2.7, 3.3, 3.9, 4.5, 5.1, 5.7, 6.3, 6.9, 7.5, 8.1, 8.7, 9.3, 9.9, 10.5, 11.1, 11.7, 12.3, 12.9, 13.5, 14.1, 14.7, 15.3, 15.9, 16.5, 17.1, 17.7, 18.3, 18.9};
 
 	double xP[64] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	double zP[64] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	
-	double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
-	double obl[16] = {0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5};
-	*/
+	//double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
+	//double obl[16] = {0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5};
+	double ang[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	double obl[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
+	double pos[16] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+	
 
 	// Sonde linéaire 128 éléments
 	/*
@@ -166,7 +169,7 @@ int main()
 */
 
 	// Sonde matriciel 32 éléments 16 lois de retard
-	
+	/*
 	double xP[32] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	double yP[32] = {3.15, 3.15, 3.15, 3.15, 2.25, 2.25, 2.25, 2.25, 1.35, 1.35, 1.35, 1.35, 0.45, 0.45, 0.45, 0.45, -0.45, -0.45, -0.45, -0.45, -1.35, -1.35,
@@ -177,7 +180,7 @@ int main()
 
 	double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
 	double obl[16] = {0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5};
-	
+	*/
 
 	// Sonde sectoriel 127 éléments 16 lois de retard
 	/*
@@ -449,7 +452,7 @@ double zP[127] = {0,
 	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 	*/
 
-	int nbElem = 32;
+	int nbElem = 64;
 	int nbLaw = 16;
 	double ch = 35;
 	int nbPtRemar = 3;
@@ -457,11 +460,15 @@ double zP[127] = {0,
 	double thickness = 16;
 	double focalL = 10000.0;
 	double intCel = 1500.0;
-	int defTy = 0;
+	int defTy = 1;
 	double offSet = 0;
+	int nbPath = 4;
 
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
+	double *pZ = (double *)malloc(4 * nbLaw * sizeof(double));
+	double *pX = (double *)malloc(4 * nbLaw * sizeof(double));
+	double *pY = (double *)malloc(4 * nbLaw * sizeof(double));
 
 	double *alS = (double *)malloc(nbLaw * sizeof(double));
 	double *xi = (double *)malloc(nbLaw * sizeof(double));
@@ -481,7 +488,7 @@ double zP[127] = {0,
 	ctube.Set("coupling.velocity", UNIT_mps, &intCel);
 
 	ctube.Set("Targets.Tilts", UNIT_deg, &nbLaw, ang);
-	//ctube.Set("Targets.Positions", UNIT_deg, &nbLaw, pos);
+	ctube.Set("Targets.Positions", UNIT_deg, &nbLaw, pos);
 	ctube.Set("Targets.Skews", UNIT_deg, &nbLaw, obl);
 	
 	ctube.Set("Defect_Type", UNIT_mm, &defTy);
@@ -499,6 +506,10 @@ double zP[127] = {0,
 	timeReq = clock() - timeReq;
 
 	ctube.Get("laws", UNIT_ns, &nbLaw, &nbElem, la);
+	ctube.Get("Paths.z", UNIT_mm, &nbLaw, &nbPath, pZ);
+	ctube.Get("Paths.x", UNIT_mm, &nbLaw, &nbPath, pX);
+	ctube.Get("Paths.y", UNIT_mm, &nbLaw, &nbPath, pY);
+
 	/*
 	ctube.Get("alphaS", UNIT_deg, &nbLaw, alS);
 	ctube.Get("xi3D", UNIT_mm, &nbLaw, xi);
@@ -508,7 +519,7 @@ double zP[127] = {0,
 	
 	for (int i = 0; i < nbLaw * nbElem; i++)
 	{
-		cout << la[i] << endl;
+		//cout << la[i] << endl;
 	}
 	/*
 	for (int i = 0; i < nbLaw; i++)
@@ -516,14 +527,12 @@ double zP[127] = {0,
 		cout << "AlphaS de la " << " loi " << i+1 << " : "<< alS[i] << endl;
 	}
 	*/
-	/*
-	for (int i = 0; i < nbLaw; i++)
+	
+	for (int i = 0; i < nbLaw * 3; i++)
 	{
-		cout << "xi3D de la " << " loi " << i+1 << " : "<< xi[i] << endl;
-		cout << "yi3D de la " << " loi " << i+1 << " : "<< yi[i] << endl;
-		cout << "zi3D de la " << " loi " << i+1 << " : " << zi[i] << endl;
+		std::cout << pY[i] << " ,";
 	}
-	*/
+	
 
 	cout << "Temps total ExecSync() + Calculate() : " 
 	<< ((float)timeReq / CLOCKS_PER_SEC) * 1000 << " ms" << endl;
