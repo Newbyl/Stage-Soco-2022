@@ -835,7 +835,7 @@ int Ctube::Calculate()
 		for (int iElem = 0; iElem < numberOfElements; iElem++)
 		{
 			double dist2 = sqrt(pow(((xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
-			 - elements.coordinates.x[iElem], 2.0) 
+			- elements.coordinates.x[iElem], 2.0) 
 			+ pow((if1 * focal.length.coupling) - elements.coordinates.y[iElem], 2.0)
 			+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
 

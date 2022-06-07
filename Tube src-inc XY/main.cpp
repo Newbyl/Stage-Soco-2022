@@ -166,7 +166,7 @@ int main()
 */
 
 	// Sonde matriciel 32 éléments 16 lois de retard
-	/*
+	
 	double xP[32] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	double yP[32] = {3.15, 3.15, 3.15, 3.15, 2.25, 2.25, 2.25, 2.25, 1.35, 1.35, 1.35, 1.35, 0.45, 0.45, 0.45, 0.45, -0.45, -0.45, -0.45, -0.45, -1.35, -1.35,
@@ -177,9 +177,10 @@ int main()
 
 	double ang[16] = {18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18};
 	double obl[16] = {0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5};
-	*/
+	
 
 	// Sonde sectoriel 127 éléments 16 lois de retard
+	/*
 	double yP[127]{0,
 	0,
 	0.779423,
@@ -446,9 +447,9 @@ double zP[127] = {0,
 	//double ang[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
 	//double notch[16] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30};
 	double pos[16] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
+	*/
 
-
-	int nbElem = 127;
+	int nbElem = 32;
 	int nbLaw = 16;
 	double ch = 35;
 	int nbPtRemar = 3;
@@ -457,6 +458,7 @@ double zP[127] = {0,
 	double focalL = 10000.0;
 	double intCel = 1500.0;
 	int defTy = 0;
+	double offSet = 0;
 
 
 	double *la = (double *)malloc(nbLaw * nbElem * sizeof(double));
@@ -479,15 +481,17 @@ double zP[127] = {0,
 	ctube.Set("coupling.velocity", UNIT_mps, &intCel);
 
 	ctube.Set("Targets.Tilts", UNIT_deg, &nbLaw, ang);
-	ctube.Set("Targets.Positions", UNIT_deg, &nbLaw, pos);
+	//ctube.Set("Targets.Positions", UNIT_deg, &nbLaw, pos);
 	ctube.Set("Targets.Skews", UNIT_deg, &nbLaw, obl);
 	
 	ctube.Set("Defect_Type", UNIT_mm, &defTy);
 
+	ctube.Set("tubeOffset", UNIT_mm, &offSet);
 	ctube.Set("diameter", UNIT_mm, &diam);
 	ctube.Set("thickness", UNIT_mm, &thickness);
 	ctube.Set("focal.length.coupling", UNIT_mm, &focalL);
 	ctube.Set("coupling.height", UNIT_mm, &ch);
+	
 
 	clock_t timeReq;
 	timeReq = clock();

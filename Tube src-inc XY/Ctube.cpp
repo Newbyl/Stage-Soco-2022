@@ -25,6 +25,7 @@ Ctube::Ctube()
 	diameter = 0;
 	thickness = 0;
 	resolution = 0.1;
+	tubeOffset = 0;
 
 	defectType = DEFECT_TYPE::NOTCHE;
 
@@ -178,6 +179,13 @@ int Ctube::Set(const char *param_name, int unit, double *value)
 	if (strcmpi(param_name, "Defect_Type") == 0)
 	{
 		defectType = (DEFECT_TYPE)*value;
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "tubeOffset") == 0)
+	{
+		tubeOffset = Unit::ChangeUnit(*value, unit, UNIT_mm);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -896,15 +904,15 @@ int Ctube::Calculate()
 {	
 	if (defectType == DEFECT_TYPE::NOTCHE)
 	{
-		double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
-		double minXProbe = minArray(elements.coordinates.x, numberOfElements);
+		double maxYProbe = maxArray(elements.coordinates.x, numberOfElements);
+		double minYProbe = minArray(elements.coordinates.x, numberOfElements);
 
 		// For loop that iterate the number of law that we want.
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
 			std::vector<double> elipse = Ctube::newElipse(targets.skews[iLaw], targets.tilts[iLaw]);
 			// Here we get all the values given by the function newElipse
-			double xI3Dv = elipse.at(0);
+			double xI3Dv = elipse.at(0) + tubeOffset;
 			double yI3Dv = elipse.at(1);
 			double zI3Dv = elipse.at(2);
 			double alphaSv = elipse.at(3);
@@ -928,27 +936,29 @@ int Ctube::Calculate()
 				if2 = (zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			
 			if (targets.skews[iLaw] <= 270 && targets.skews[iLaw] >= 90)
-				if1 = -(yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+				if1 = -(xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			else
-				if1 = (yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+				if1 = (xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			
-
+			
 			// Array of all the distances between the probe and the defect.
 			double* distancesArray = (double*)malloc(numberOfElements * sizeof(double));
 			
 			// For loop where are going to compute all possible path.
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
-				double dist2 = sqrt(pow(((xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
-				- elements.coordinates.x[iElem] + (((maxXProbe - minXProbe ) / 2) + minXProbe), 2.0) 
-				+ pow((if1 * focal.length.coupling) - elements.coordinates.y[iElem], 2.0)
+				double dist2 = sqrt(pow(((yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
+				- elements.coordinates.y[iElem] + (((maxYProbe - minYProbe ) / 2) + minYProbe), 2.0) 
+				+ pow((if1 * focal.length.coupling) - elements.coordinates.x[iElem], 2.0)
 				+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
 
 				distancesArray[iElem] = dist2;
 			}
+					
 			
 			// Maximum value of tabDist array
 			double maxDistancesArray = maxArray(distancesArray, numberOfElements);
+
 
 			// For loop that iterate number of element times and where we are going to compute
 			// all the delay for each element (converted to milliseconds).
@@ -961,6 +971,8 @@ int Ctube::Calculate()
 			
 			// Release of the memory taken by distances array
 			free(distancesArray);
+
+			xI3Dv -= tubeOffset;
 
 			// Here we get the values from the newElipse function for each law.
 			alphaS[iLaw] = alphaSv;

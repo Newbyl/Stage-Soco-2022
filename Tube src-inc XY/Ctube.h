@@ -49,6 +49,7 @@ private:
 
     double diameter;                // Diameter of the tube.
     double thickness;               // Thickness of the tube.
+    double tubeOffset;              // Offset of the tube.
 
     enum class DEFECT_TYPE {         // Type of defect you want to see (0 = NOTCHE, 1 = FBH)
         NOTCHE,
