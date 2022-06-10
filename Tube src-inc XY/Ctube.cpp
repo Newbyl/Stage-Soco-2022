@@ -904,7 +904,7 @@ std::vector<double*> Ctube::fbhBuilder(double barRadius)
 			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barRadius - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
-			xInt[iLaw] = x0;
+			xInt[iLaw] = x1;
 			yInt[iLaw] = y1;
 		}
 
