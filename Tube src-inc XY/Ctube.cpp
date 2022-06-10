@@ -854,7 +854,7 @@ std::vector<double> Ctube::newElipse(double skew, double alphaI)
 }
 
 
-std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
+std::vector<double*> Ctube::fbhBuilder(double barRadius)
 {
 	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
 	double* ar = (double*)malloc(numberOfTargets * sizeof(double));
@@ -878,18 +878,20 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
         ar[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
         
 		double a = M_PI - ai[iLaw];
-		double ad = a + asin(sin(a) * (barDiameter2 / (coupling.height + barDiameter2)));
+		double ad = a + asin(sin(a) * (barRadius / (coupling.height + barRadius)));
 
-		double y1 = sin((M_PI - ad)) * barDiameter2;
-		double x0 = cos((M_PI - ad)) * barDiameter2;
-		double x1 = (barDiameter2 - x0);
+		
 
-		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
-		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		double y1 = sin((M_PI - ad)) * barRadius;
+		double x0 = cos((M_PI - ad)) * barRadius;
+		double x1 = (barRadius - x0);
+
+		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barRadius);
+		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barRadius);
 
 		double distance = sqrt(pow(x2, 2.0) + pow(y2, 2.0) + pow(0, 2.0));
 
-		if (x0 == barDiameter2)
+		if (x0 == barRadius)
 		{
 			x[iLaw] = targets.positions[iLaw] + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = 0;
@@ -899,11 +901,11 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 		}
 		else
 		{
-			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
+			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barRadius - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
-			xInt[iLaw] = (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);
-			yInt[iLaw] = y1 + coupling.height;
+			xInt[iLaw] = x0;
+			yInt[iLaw] = y1;
 		}
 
 		z[iLaw] = targets.positions[iLaw] * (0 / distance);
@@ -921,9 +923,16 @@ std::vector<double*> Ctube::fbhBuilder(double barDiameter2)
 	return values;
 }
 
-
+// Calculate function return the the delay for each element of the probe for each law.
+// It also return remarkable points for each law.
 int Ctube::Calculate()
 {	
+	for (int iElem = 0; iElem < numberOfElements; iElem++)
+	{
+		elements.coordinates.y[iElem] = coupling.height - elements.coordinates.y[iElem];
+	}
+
+	// Case where the defect type selected is a notch.
 	if (defectType == DEFECT_TYPE::NOTCHE)
 	{
 		double maxYProbe = maxArray(elements.coordinates.x, numberOfElements);
@@ -940,14 +949,15 @@ int Ctube::Calculate()
 			double zI3Dv = elipse.at(2);
 			double alphaSv = elipse.at(3);
 
+			// XYZ coordinates of the defect.
 			double xDef = elipse.at(4);
 			double yDef = elipse.at(5);
 			double zDef = elipse.at(6);
-
+			// XYZ coordinates of the reflection point in the tube.
 			double xRef = elipse.at(7);
 			double yRef = elipse.at(8);
 			double zRef = elipse.at(9);
-
+			// XYZ coordinates of the interface point.
 			double xInter = elipse.at(10);
 			double yInter = elipse.at(11);
 			double zInter = elipse.at(12);
@@ -974,7 +984,7 @@ int Ctube::Calculate()
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
 				double dist2 = sqrt(pow(((yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
-				- elements.coordinates.y[iElem] + (((maxYProbe - minYProbe ) / 2) + minYProbe), 2.0) 
+				- elements.coordinates.y[iElem], 2.0) 
 				+ pow((if1 * focal.length.coupling) - elements.coordinates.x[iElem], 2.0)
 				+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
 
@@ -1236,17 +1246,21 @@ int Ctube::Calculate()
 				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
 			}
 
+			double deflectionAngle = (M_PI - asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI)))
+			+ asin(sin(M_PI - asin((coupling.velocity / material.velocity) * sin(targets.tilts[iLaw] / 180 * M_PI)))
+			* ((diameter / 2) / (coupling.height + (diameter / 2))));
+
 			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
 			if (numberOfElements % 2 != 0) {
-				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[0] = ((maxXProbe - minXProbe) / 2) + minXProbe;
+				paths[iLaw].x[1] = fbhValues[5][iLaw];
 				paths[iLaw].x[2] = xDef[iLaw];
 
-				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2] - coupling.height;
+				paths[iLaw].y[1] = fbhValues[4][iLaw];
 				paths[iLaw].y[2] = yDef[iLaw];
 
-				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[0] = ((maxZProbe - minZProbe) / 2) + minZProbe;
 				paths[iLaw].z[1] = fbhValues[6][iLaw];
 				paths[iLaw].z[2] = zDef[iLaw];
 			}
@@ -1254,15 +1268,15 @@ int Ctube::Calculate()
 			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
 			else
 			{
-				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[0] = ((maxXProbe - minXProbe) / 2) + minXProbe;
+				paths[iLaw].x[1] = fbhValues[5][iLaw];
 				paths[iLaw].x[2] = xDef[iLaw];
 
-				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[0] = ((elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2) - coupling.height;
+				paths[iLaw].y[1] = fbhValues[4][iLaw];
 				paths[iLaw].y[2] = yDef[iLaw];
 
-				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[0] = ((maxZProbe - minZProbe) / 2) + minZProbe;
 				paths[iLaw].z[1] = fbhValues[6][iLaw];
 				paths[iLaw].z[2] = zDef[iLaw];
 			}
@@ -1323,15 +1337,15 @@ int Ctube::Calculate()
 
 			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
 			if (numberOfElements % 2 != 0) {
-				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[0] = ((maxXProbe - minXProbe) / 2) + minXProbe;
+				paths[iLaw].x[1] = fbhValues[5][iLaw];
 				paths[iLaw].x[2] = xDef[iLaw];
 
-				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2] - coupling.height;
+				paths[iLaw].y[1] = fbhValues[4][iLaw];
 				paths[iLaw].y[2] = yDef[iLaw];
 
-				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[0] = ((maxZProbe - minZProbe) / 2) + minZProbe;
 				paths[iLaw].z[1] = fbhValues[6][iLaw];
 				paths[iLaw].z[2] = zDef[iLaw];
 			}
@@ -1339,15 +1353,15 @@ int Ctube::Calculate()
 			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
 			else
 			{
-				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[0] = ((maxXProbe - minXProbe) / 2) + minXProbe;
+				paths[iLaw].x[1] = fbhValues[5][iLaw];
 				paths[iLaw].x[2] = xDef[iLaw];
 
-				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[0] = ((elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2) - coupling.height;
+				paths[iLaw].y[1] = fbhValues[4][iLaw];
 				paths[iLaw].y[2] = yDef[iLaw];
 
-				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[0] = ((maxZProbe - minZProbe) / 2) + minZProbe;
 				paths[iLaw].z[1] = fbhValues[6][iLaw];
 				paths[iLaw].z[2] = zDef[iLaw];
 			}
@@ -1367,6 +1381,13 @@ int Ctube::Calculate()
 			free(fbhValues[i]);
 		}
 	}
+
+	// Retreive original coordinates
+	for (int i = 0; i < numberOfElements; i++)
+	{
+		elements.coordinates.y[i] = -1.0 * elements.coordinates.y[i] + coupling.height;
+	}
+	
 	
 
 	return PLUGIN_NO_ERROR;
