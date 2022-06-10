@@ -833,12 +833,12 @@ std::vector<double> Ctube::newElipse(double skew, double alphaI)
 	double xRef = m2PhC(1);
 	double zRef = m2PhC(2);
 
-	// PT interface remark
+	// Value of interface points for the paths.
 	double yInter = m3PhC(0);
 	double xInter = m3PhC(1);
 	double zInter = m3PhC(2);
 
-	// Coordonné du point d'interface
+	// Absolute value of interface points.
 	double yi3D = abs(m3PhC(0));
 	double xi3D = abs(m3PhC(1));
 	double zi3D = abs(m3PhC(2));
@@ -962,20 +962,19 @@ int Ctube::Calculate()
 			double yInter = elipse.at(11);
 			double zInter = elipse.at(12);
 
-
-
-			double if1;
-			double if2;
+			// Put x and z coordinates in the right dial by inverting x and z coordinates depending on the tilt and the skew angle asked.
+			double xRightDial;
+			double zRightDial;
 
 			if (targets.skews[iLaw] <= 360 && targets.skews[iLaw] >= 180)
-				if2 = -(zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+				zRightDial = -(zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			else
-				if2 = (zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+				zRightDial = (zI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			
 			if (targets.skews[iLaw] <= 270 && targets.skews[iLaw] >= 90)
-				if1 = -(xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+				xRightDial = -(xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			else
-				if1 = (xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
+				xRightDial = (xI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0))));
 			
 			// Array of all the distances between the probe and the defect.
 			double* distancesArray = (double*)malloc(numberOfElements * sizeof(double));
@@ -985,8 +984,8 @@ int Ctube::Calculate()
 			{
 				double dist2 = sqrt(pow(((yI3Dv / (sqrt(pow(xI3Dv, 2.0) + pow(yI3Dv, 2.0) + pow(zI3Dv, 2.0)))) * focal.length.coupling)
 				- elements.coordinates.y[iElem], 2.0) 
-				+ pow((if1 * focal.length.coupling) - elements.coordinates.x[iElem], 2.0)
-				+ pow((if2 * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
+				+ pow((xRightDial * focal.length.coupling) - elements.coordinates.x[iElem], 2.0)
+				+ pow((zRightDial * focal.length.coupling) - elements.coordinates.z[iElem], 2.0));
 
 				distancesArray[iElem] = dist2;
 			}
@@ -1054,30 +1053,32 @@ int Ctube::Calculate()
 			}
 
 		}
-	}
+	}	// End of the case where the defect type is notch.
 
+	// Else case that handle when the defect is a FBH.
 	else
 	{
-		double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
+		double* incidentAngle = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
 
+		// For loop that calculate all the incident angle for each law.
         for (int i = 0; i < numberOfTargets; i++)
         {
-            asinTiltRad[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
+            incidentAngle[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
         }
 
-        double maxAngle = maxArray(asinTiltRad, numberOfTargets);
-        double minAngle = minArray(asinTiltRad, numberOfTargets);
+        double maxAngle = maxArray(incidentAngle, numberOfTargets);
+        double minAngle = minArray(incidentAngle, numberOfTargets);
 
-		free(asinTiltRad);
+		free(incidentAngle);
 
+		// Here we get the values from the fbhBuilder function the get the coordinates XYZ of the fbh.
         std::vector<double*> fbhValues = fbhBuilder(diameter/2);
         
         for (int i = 0; i < numberOfTargets; i++)
         {
-			// Inver ici
             zDef[i] = fbhValues[2][i];
             yDef[i] = fbhValues[0][i] + coupling.height;
             xDef[i] = fbhValues[1][i];
@@ -1108,7 +1109,6 @@ int Ctube::Calculate()
         std::vector<double> preXIntB;
         std::vector<double> preYIntB;
 
-		// inv ici
         double minXProbe = minArray(elements.coordinates.x, numberOfElements);
         double maxXProbe = maxArray(elements.coordinates.x, numberOfElements);
         double minZProbe = minArray(elements.coordinates.z, numberOfElements);
@@ -1121,6 +1121,7 @@ int Ctube::Calculate()
         else
             if2 = resolution;
 
+		// For loop where we calculate the XY coordinates of the interfaces points before duplicate it.
         for (int i = 0; i < ((diameter * M_PI / 2) / resolution) + 1; i++)
         {
             if (cos(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) * (diameter / 2)
@@ -1128,7 +1129,6 @@ int Ctube::Calculate()
                 cos(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) * (diameter / 2)
                 < maxXProbe + if1)
             {	
-				// Inver ici
                 preYIntB.push_back(sin(((M_PI / ((diameter * M_PI / 2) / resolution)) * i) - M_PI) 
                 * (diameter / 2) + (diameter / 2) + coupling.height);
 
@@ -1143,7 +1143,7 @@ int Ctube::Calculate()
         double* zIntB = (double*)malloc((((maxZProbe - minZProbe) / resolution) + 1) * preYIntB.size() 
         * sizeof(double));
 
-
+		// For loop where we duplicate the XY coordinates of the interfaces points.
         for (int i = 0; i < (((maxZProbe - minZProbe) / resolution) + 1); i++)
         {
 			for (int j = 0; j < preXIntB.size(); j++)
@@ -1159,6 +1159,8 @@ int Ctube::Calculate()
             }
         }
 
+		// If _OPTIMIZATION is defined in Cplate.h, we use the optimization function to calculate the
+		// total path of the US.
 		#ifdef _OPTIMIZATION
 		int nbGroupInt = (((maxZProbe - minZProbe) / resolution) + 1);
 
@@ -1166,7 +1168,7 @@ int Ctube::Calculate()
         {
 			double *compar = (double *)malloc(numberOfElements * sizeof(double));
 
-			int decalage = xIntB.size() / nbGroupInt;
+			int offset = xIntB.size() / nbGroupInt;
 
 			double addTimeElemIntDef = 0;
 
@@ -1186,7 +1188,6 @@ int Ctube::Calculate()
 				compar[i] = INFINITY;
 			}
 
-			// changement de la boucle ici
             for (int i = 0; i < nbGroupInt; i++)
             {
 				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
@@ -1200,8 +1201,8 @@ int Ctube::Calculate()
 
 
 					// Indexes and length for the while loop below.
-					int start = (decalage * i);
-					int end = (decalage * (i + 1)) - 1;
+					int start = (offset * i);
+					int end = (offset * (i + 1)) - 1;
 					int mid = (int)((end - start) / 2);
 					int length = 0;
 
