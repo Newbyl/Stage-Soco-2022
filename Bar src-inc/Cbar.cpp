@@ -5,11 +5,12 @@
 #include <cstddef>
 #include <string.h>
 #include "framework.h"
-#include <cmath>
+#include <math.h>
 #include <iostream>
 #include <vector>
 #include <tuple>
 #define _CRT_SECURE_NO_WARNINGS
+
 
 #define M_PI 3.14159265358979323846264338327950288
 
@@ -19,8 +20,6 @@
 #define _strnicmp(x, y, z) strncasecmp((x), (y), (z))
 
 // Ajouter flag /fp:fast et /O2 a la compilation.
-
-// TODO : ajouter les getter / setter
 
 Cbar::Cbar()
 {
@@ -500,7 +499,7 @@ double Cbar::minArray(double *array, int size)
 }
 
 
-std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
+std::vector<double*> Cbar::fbhBuilder(double barRadius)
 {
 	double* ai = (double*)malloc(numberOfTargets * sizeof(double));
 	double* ar = (double*)malloc(numberOfTargets * sizeof(double));
@@ -525,20 +524,20 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
         ar[iLaw] = targets.tilts[iLaw] / 180 * M_PI;
         
 		double a = M_PI - ai[iLaw];
-		double ad = a + asin(sin(a) * (barDiameter2 / (coupling.height + barDiameter2)));
+		double ad = a + asin(sin(a) * (barRadius / (coupling.height + barRadius)));
 
-		double x0 = cos((M_PI - ad)) * barDiameter2;
-		double y1 = sin((M_PI - ad)) * barDiameter2;	// Y coordinate of the interface
-		double x1 = (barDiameter2 - x0);				// X coordinate of the interface
+		double x0 = cos((M_PI - ad)) * barRadius;
+		double y1 = sin((M_PI - ad)) * barRadius;	// Y coordinate of the interface
+		double x1 = (barRadius - x0);				// X coordinate of the interface
 
 		// X coordinate of the defect
-		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		double x2 = sin((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barRadius);
 		// Y coordinate of the defect
-		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barDiameter2);
+		double y2 = cos((M_PI - (ar[iLaw] + ((M_PI / 2) - (M_PI - ad))))) * ((sin(M_PI - (ar[iLaw] * 2)) / sin(ar[iLaw])) * barRadius);
 		// Calculation of 
 		double distance = sqrt(pow(x2, 2.0) + pow(y2, 2.0) + pow(0, 2.0));
 
-		if (x0 == barDiameter2)
+		if (x0 == barRadius)
 		{
 			x[iLaw] = targets.positions[iLaw] + (((maxXprobe - minXprobe) / 2) + minXprobe);
 			y[iLaw] = 0;
@@ -548,10 +547,10 @@ std::vector<double*> Cbar::fbhBuilder(double barDiameter2)
 		}
 		else
 		{
-			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barDiameter2 - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);;
+			x[iLaw] = (targets.positions[iLaw] * (x2 / distance)) + (barRadius - x0) + (((maxXprobe - minXprobe) / 2) + minXprobe);;
 			y[iLaw] = (targets.positions[iLaw] * (y2 / distance)) + y1;
 
-			xInt[iLaw] = (barDiameter2 - x0);
+			xInt[iLaw] = x1;
 			yInt[iLaw] = y1;
 		}
 
@@ -644,9 +643,19 @@ std::vector<double*> Cbar::notcheBuilder(double barDiameter2)
 
 int Cbar::Calculate()
 {
+	double maxXprobe = maxArray(elements.coordinates.x, numberOfElements);
+	double minXprobe = minArray(elements.coordinates.x, numberOfElements);
+	double maxZprobe = maxArray(elements.coordinates.z, numberOfElements);
+	double minZprobe = minArray(elements.coordinates.z, numberOfElements);
+
+	for (int iElem = 0; iElem < numberOfElements; iElem++)
+	{
+		elements.coordinates.y[iElem] = coupling.height - elements.coordinates.y[iElem];
+	}
+
 	// This if case handle when the defect type selected is FBH.
     if (defectType == DEFECT_TYPE::FBH){
-        double* asinTiltRad = (double*)malloc(numberOfTargets * sizeof(double));
+        double* incidentAngle = (double*)malloc(numberOfTargets * sizeof(double));
         double* zDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* xDef = (double*)malloc(numberOfTargets * sizeof(double));
         double* yDef = (double*)malloc(numberOfTargets * sizeof(double));
@@ -654,13 +663,13 @@ int Cbar::Calculate()
 
         for (size_t i = 0; i < numberOfTargets; i++)
         {
-            asinTiltRad[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
+            incidentAngle[i] = asin(sin(targets.tilts[i] / 180 * M_PI) * (coupling.velocity / material.velocity));
         }
 
-        double maxAngle = maxArray(asinTiltRad, numberOfTargets);
-        double minAngle = minArray(asinTiltRad, numberOfTargets);
+        double maxAngle = maxArray(incidentAngle, numberOfTargets);
+        double minAngle = minArray(incidentAngle, numberOfTargets);
 
-		free(asinTiltRad);
+		free(incidentAngle);
 
         std::vector<double*> fbhValues = fbhBuilder(barDiameter/2);
         
@@ -843,15 +852,15 @@ int Cbar::Calculate()
 
 			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
 			if (numberOfElements % 2 != 0) {
-				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[0] = (((maxXprobe - minXprobe) / 2) + minXprobe);
+				paths[iLaw].x[1] = fbhValues[5][iLaw];
 				paths[iLaw].x[2] = xDef[iLaw];
 
-				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2] - coupling.height;
+				paths[iLaw].y[1] = fbhValues[4][iLaw];
 				paths[iLaw].y[2] = yDef[iLaw];
 
-				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
+				paths[iLaw].z[0] = (((maxZprobe - minZprobe) / 2) + minZprobe);
 				paths[iLaw].z[1] = fbhValues[6][iLaw];
 				paths[iLaw].z[2] = zDef[iLaw];
 			}
@@ -859,15 +868,15 @@ int Cbar::Calculate()
 			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
 			else
 			{
-				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].x[1] = fbhValues[4][iLaw];
+				paths[iLaw].x[0] = (((maxXprobe - minXprobe) / 2) + minXprobe);
+				paths[iLaw].x[1] = fbhValues[5][iLaw];
 				paths[iLaw].x[2] = xDef[iLaw];
 
-				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].y[1] = fbhValues[5][iLaw];
+				paths[iLaw].y[0] = ((elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2) - coupling.height;
+				paths[iLaw].y[1] = fbhValues[4][iLaw];
 				paths[iLaw].y[2] = yDef[iLaw];
 
-				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
+				paths[iLaw].z[0] = (((maxZprobe - minZprobe) / 2) + minZprobe);
 				paths[iLaw].z[1] = fbhValues[6][iLaw];
 				paths[iLaw].z[2] = zDef[iLaw];
 			}
@@ -1179,26 +1188,23 @@ int Cbar::Calculate()
 
 				}
             }
+			
 			// Maximum element of delayLaw array.
 			double maxDelayLaw = maxArray(compar, numberOfElements);
 			// For loop that push the delay law for each element of the probe
 			for (int iElem = 0; iElem < numberOfElements; iElem++)
 			{
-				if (maxDelayLaw - compar[iElem] == NAN)
-				{
-					return PLUGIN_INVALID_ANGLE;
-				}
 				laws[iLaw].delays[iElem] = maxDelayLaw - compar[iElem];
 			}
 
 			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
 				if (numberOfElements % 2 != 0) {
 					paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-					paths[iLaw].x[1] = notcheValues[5][iLaw];
+					paths[iLaw].x[1] = notcheValues[6][iLaw];
 					paths[iLaw].x[2] = xDef[iLaw];
 
-					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-					paths[iLaw].y[1] = notcheValues[6][iLaw];
+					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2] - coupling.height;
+					paths[iLaw].y[1] = notcheValues[5][iLaw];
 					paths[iLaw].y[2] = yDef[iLaw];
 
 					paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
@@ -1210,11 +1216,11 @@ int Cbar::Calculate()
 				else
 				{
 					paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].x[1] = notcheValues[5][iLaw];
+					paths[iLaw].x[1] = notcheValues[6][iLaw];
 					paths[iLaw].x[2] = xDef[iLaw];
 
-					paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].y[1] = notcheValues[6][iLaw];
+					paths[iLaw].y[0] = ((elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2) - coupling.height;
+					paths[iLaw].y[1] = notcheValues[5][iLaw];
 					paths[iLaw].y[2] = yDef[iLaw];
 
 					paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
@@ -1320,6 +1326,12 @@ int Cbar::Calculate()
 			free(notcheValues[i]);
 		}
     }
+
+	// Retreive the original coordinates.
+	for (int iElem = 0; iElem < numberOfElements; iElem++)
+	{
+		elements.coordinates.y[iElem] = -1.0 * elements.coordinates.y[iElem] + coupling.height;
+	}
 
 
 	return PLUGIN_NO_ERROR;

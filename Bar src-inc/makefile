@@ -2,7 +2,8 @@ CC := g++
 
 CFLAGS := -std=c++17 -Wall -Wextra -pedantic -ggdb -Wno-unused-variable -Wno-unused-parameter -Wunknown-pragmas
 
-OPTFLAGS := -O3 -ffast-math
+# We concatenate the optimisation flags with CFLAGS for practical reasons.
+CFLAGS += -O3 -ffast-math
 
 CLI := cli
 TEST := test
@@ -13,14 +14,14 @@ test : $(TEST)
 cli : $(CLI)
 
 $(CLI) : unit.o IPlugin.o Cbar.o main.o
-	$(CC) $(CFLAGS) $(OPTFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 $(TEST) : test.o
-	$(CC) $(CFLAGS) $(OPTFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 %.o : %.cpp
 	clear
-	$(CC) $(CFLAGS) $(OPTFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 	
 clean :
 	rm *.o $(CLI) $(TEST)
