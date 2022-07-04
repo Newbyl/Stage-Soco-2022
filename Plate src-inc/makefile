@@ -25,7 +25,7 @@ $(LIBPLATE) : unit.o IPlugin.o Cplate.o
 
 %.o : %.cpp
 	clear
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c -fPIC $<
 	
 clean :
 	rm *.o $(CLI)
