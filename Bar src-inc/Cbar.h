@@ -1,7 +1,17 @@
 #ifndef CBAR_H__
 #define CBAR_H__
 
+#define _CRT_SECURE_NO_WARNINGS
+
+#define M_PI 3.14159265358979323846264338327950288
+#define _OPTIMIZATION
+
 #include "IPlugin.h"
+#include "framework.h"
+#include "unit.h"
+#include "error_codes.h"
+
+#include <math.h>
 #include <vector>
 
 
@@ -40,7 +50,11 @@ private:
     int numberOfElements;           // Number of elements to calculate the laws.
     
     double resolution;              // The resolution for interface points, default = 0.1mm.
-    double barDiameter;             // Diameter of the bar in millimeters.
+    double diameter;                // Diameter of the bar in millimeters.
+
+    double centerApertureX;         // x,y,z coordinates of the center of the aperture.
+    double centerApertureY;         //
+    double centerApertureZ;         //
 
     struct ELEMENTS {               // Spacial coordinates of the elements.
         struct COORDINATES {
@@ -113,7 +127,6 @@ private:
     #pragma warning Unknown dynamic link import/export semantics.
 #endif
 
-/*
 // Finally export a creation and deletion function (which you can get using LoadLibrary/GetProcAddress)
 EXPORT IPlugin* CreatePluginInstance()
 {
@@ -123,6 +136,5 @@ EXPORT void ReleasePluginInstance(IPlugin* p)
 {
     p->Close();
 }
-*/
 
 #endif /* CBAR_H__ */

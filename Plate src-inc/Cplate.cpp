@@ -1,11 +1,4 @@
-#include "framework.h"
 #include "Cplate.h"
-#include "unit.h"
-#include "error_codes.h"
-#include "cmath"
-#include <vector>
-#define _OPTIMIZATION
-
 
 // TODO : Compile with /O2 /fp:fast compilation option for windows (MSCV compiler).
 // TODO : Compile with -O3 -ffast-math flags for linux / mac (g++ / clang++ compiler).
@@ -22,6 +15,10 @@ Cplate::Cplate()
 	resolution = 0.1;
 
 	numberOfElements = 0;
+
+	centerApertureX = 0;
+	centerApertureY = 0;
+	centerApertureZ = 0;
 
 	elements.coordinates.x = NULL;
 	elements.coordinates.y = NULL;
@@ -131,6 +128,27 @@ int Cplate::Set(const char* param_name, int unit, double* value)
 	if (strcmpi(param_name, "Coupling.Height") == 0)
 	{
 		coupling.height = Unit::ChangeUnit(*value, unit, UNIT_mm);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "center.aperture.x") == 0)
+	{
+		centerApertureX = Unit::ChangeUnit(*value, unit, UNIT_mm);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "center.aperture.y") == 0)
+	{
+		centerApertureY = Unit::ChangeUnit(*value, unit, UNIT_mm);
+		calculationDone = false;
+		return PLUGIN_NO_ERROR;
+	}
+
+	if (strcmpi(param_name, "center.aperture.z") == 0)
+	{
+		centerApertureZ = Unit::ChangeUnit(*value, unit, UNIT_mm);
 		calculationDone = false;
 		return PLUGIN_NO_ERROR;
 	}
@@ -459,6 +477,15 @@ int Cplate::minArrayIndex(const double* array, int size)
 
 int Cplate::Calculate()
 {
+	// This calculation is based on a probe centered on X=Y=Z=0.0
+	if (coupling.height > 0.0)
+	{
+		for (int i = 0; i < numberOfElements; i++)
+		{
+			elements.coordinates.y[i] = coupling.height - elements.coordinates.y[i];
+		}
+	}
+
 	// Here we get the max and min of x,y,z coordinates.
 	double maxYProbe = maxArray(elements.coordinates.y, numberOfElements);
 	double minYProbe = minArray(elements.coordinates.y, numberOfElements);
@@ -474,7 +501,7 @@ int Cplate::Calculate()
 
 	for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 	{
-		if (positionType == FLOW_POSITION_TYPE::PATH)
+		if (positionType == FLOW_POSITION_TYPE::DEPTH)
 		{
 			positionProjection2[iLaw] = targets.positions[iLaw];
 			positionProjection[iLaw] = targets.positions[iLaw];
@@ -512,36 +539,19 @@ int Cplate::Calculate()
 				laws[iLaw].delays[iElem] = ((maxDistances - distances[iElem]) / material.velocity) * 1000;
 			}
 
-			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
-			if (numberOfElements % 2 != 0) {
-				paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[1] = elements.coordinates.x[numberOfElements / 2];
-				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
+			// Computation of the remarkable points.
+			paths[iLaw].x[0] = centerApertureX;
+			paths[iLaw].x[1] = centerApertureX;
+			paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
 
-				paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[1] = elements.coordinates.y[numberOfElements / 2];
-				paths[iLaw].y[2] = positionProjection2[iLaw] + elements.coordinates.y[numberOfElements / 2];
+			paths[iLaw].y[0] = -centerApertureY;
+			paths[iLaw].y[1] = -centerApertureY;
+			paths[iLaw].y[2] = positionProjection2[iLaw] + paths[iLaw].y[0];
 
-				paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-				paths[iLaw].z[1] = elements.coordinates.z[numberOfElements / 2];
-				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
-			}
-
-			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
-			else
-			{
-				paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].x[1] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
-
-				paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].y[1] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].y[2] = positionProjection2[iLaw] + paths[iLaw].y[0];
-
-				paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].z[1] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
-				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
-			}
+			paths[iLaw].z[0] = centerApertureZ;
+			paths[iLaw].z[1] = centerApertureZ;
+			paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+			
 
 			// Release of the memory taken by distances array.
 			free(distances);
@@ -559,10 +569,10 @@ int Cplate::Calculate()
 		// For loop that compute x,y,z coordinates of flat bottom holes and push them into their respectives array.
 		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
 		{
-			double yFhb = ((cos(targets.tilts[iLaw]) * targets.positions[iLaw]) + coupling.height);
+			double yFhb = (cos(targets.tilts[iLaw]) * targets.positions[iLaw]) + coupling.height;
 
 			double xFhb = ((tan(asin((sin(targets.tilts[iLaw]) * coupling.velocity) / material.velocity)) * coupling.height) + (sin(targets.tilts[iLaw]) * targets.positions[iLaw])) * cos(targets.skews[iLaw])
-			+ (((maxXProbe - minXProbe) / 2) + minXProbe);
+				+ (((maxXProbe - minXProbe) / 2) + minXProbe);
 
 			double zFhb = ((tan(asin((sin(targets.tilts[iLaw]) * coupling.velocity) / material.velocity)) * coupling.height) + (sin(targets.tilts[iLaw]) * targets.positions[iLaw])) * sin(targets.skews[iLaw]);
 
@@ -674,238 +684,236 @@ int Cplate::Calculate()
 				zIntP.push_back((i * resolution) + minArray(array4, cptAr4));
 			}
 		}
-		
+
 		// Release of the memory taken by array4.
 		free(array4);
 
 		// This if not define is the version of the algorithm non-optimized with dichotomy.
-		// If you want to use this one, put in comment "define _OPTIMIZATION".
+		// If you want to use this one, put in comment "#define _OPTIMIZATION" in "Cplate.h".
 		#ifndef _OPTIMIZATION
-			for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
-			{
-				double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interest point to the flat bottom hole
-				
-				// For loop that compute the time for the US to go from the interest point to the flat bottom hole
-				for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
-				{
-					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
-				}
+		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+		{
+			double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the interest point to the flat bottom hole
 
-				double* delayLaw = (double*)malloc(numberOfElements * sizeof(double));																  // Array that contain delay law for each probe
-				double* addTimeVector = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the flat bottom hole
-				
-				int minIndex;
+			// For loop that compute the time for the US to go from the interest point to the flat bottom hole
+			for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
+			{
+				timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
+			}
+
+			double* delayLaw = (double*)malloc(numberOfElements * sizeof(double));																  // Array that contain delay law for each probe
+			double* addTimeVector = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the flat bottom hole
+
+			int minIndex;
+
+			// For loop that compute the time for the US to go from the probe element to the interest point
+			for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
+			{
+				double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the interest point
 
 				// For loop that compute the time for the US to go from the probe element to the interest point
-				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
+				for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
 				{
-					double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to the interest point
-
-					// For loop that compute the time for the US to go from the probe element to the interest point
-					for (int j = 0; j < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); j++)
-					{
-						timeProbeInt[j] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[j], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[j], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[j], 2.0))) / (coupling.velocity / 1000);
-					}
-
-					// For loop that add timeFbhInt and timeProbeInt
-					for (int l = 0; l < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); l++)
-					{
-						addTimeVector[l] = timeFbhInt[l] + timeProbeInt[l];
-					}
-
-					free(timeProbeInt);
-
-					delayLaw[probeElem] = minArray(addTimeVector, (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1));
+					timeProbeInt[j] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[j], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[j], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[j], 2.0))) / (coupling.velocity / 1000);
 				}
 
-				minIndex = minArrayIndex(addTimeVector, (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1));
-
-				free(timeFbhInt);
-				free(addTimeVector);
-
-				// Release the memory taken by timeFbhInt.
-
-				// Maximum element of delayLaw array.
-				double maxDelayLaw = maxArray(delayLaw, numberOfElements);
-				// For loop that push the delay law for each element of the probe
-				for (int iElem = 0; iElem < numberOfElements; iElem++)
+				// For loop that add timeFbhInt and timeProbeInt
+				for (int l = 0; l < (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1); l++)
 				{
-
-					laws[iLaw].delays[iElem] = maxDelayLaw - delayLaw[iElem];
+					addTimeVector[l] = timeFbhInt[l] + timeProbeInt[l];
 				}
 
-				// Release of the memory taken by delayLaw array.
-				free(delayLaw);
+				free(timeProbeInt);
 
-				double focusPointDistance = (sqrt(pow(xFbhP[iLaw] - xIntP[minIndex], 2.0) + pow(yFbhP[iLaw] - yIntP[minIndex], 2.0) + pow(zFbhP[iLaw] - zIntP[minIndex], 2.0)));
-
-				// Get the value of remarkable x,y,z coordinates when the number of element is odd.
-				if (numberOfElements % 2 != 0) {
-					paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
-					//paths[iLaw].x[2] = focusPointDistance * sin(targets.tilts[iLaw]) + elements.coordinates.x[numberOfElements / 2];
-					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
-
-					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-					paths[iLaw].y[1] = coupling.height;
-					//paths[iLaw].y[2] = focusPointDistance * cos(abs(targets.tilts[iLaw]));
-					paths[iLaw].y[2] = positionProjection2[iLaw];
-
-					paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
-					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
-				}
-
-				// Get the value of remarkable x,y,z coordinates when the number of element is peer.
-				else
-				{
-					paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
-					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
-
-					paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].y[1] = coupling.height;
-					paths[iLaw].y[2] = positionProjection2[iLaw];
-
-					paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
-					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
-				}
+				delayLaw[probeElem] = minArray(addTimeVector, (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1));
 			}
+
+			minIndex = minArrayIndex(addTimeVector, (int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1));
+
+			free(timeFbhInt);
+			free(addTimeVector);
+
+			// Release the memory taken by timeFbhInt.
+
+			// Maximum element of delayLaw array.
+			double maxDelayLaw = maxArray(delayLaw, numberOfElements);
+			// For loop that push the delay law for each element of the probe
+			for (int iElem = 0; iElem < numberOfElements; iElem++)
+			{
+
+				laws[iLaw].delays[iElem] = maxDelayLaw - delayLaw[iElem];
+			}
+
+			// Release of the memory taken by delayLaw array.
+			free(delayLaw);
+
+			double focusPointDistance = (sqrt(pow(xFbhP[iLaw] - xIntP[minIndex], 2.0) + pow(yFbhP[iLaw] - yIntP[minIndex], 2.0) + pow(zFbhP[iLaw] - zIntP[minIndex], 2.0)));
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = centerApertureX;
+				paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
+				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
+
+				paths[iLaw].y[0] = -centerApertureY;
+				paths[iLaw].y[1] = coupling.height + paths[iLaw].y[0];
+				paths[iLaw].y[2] = positionProjection2[iLaw];
+
+				paths[iLaw].z[0] = centerApertureZ;
+				paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = centerApertureX;
+				paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
+				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
+
+				paths[iLaw].y[0] = -centerApertureY;
+				paths[iLaw].y[1] = coupling.height + paths[iLaw].y[0];
+				paths[iLaw].y[2] = positionProjection2[iLaw];
+
+				paths[iLaw].z[0] = centerApertureZ;
+				paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+			}
+		}
 		#endif
 
 		// This if define is the version of the algorithm optimized with dichotomy.
 		// If you want to use this one, delete the double slash before "define _OPTIMIZATION".
 		#ifdef _OPTIMIZATION
-			// For loop that iterates number of law times.
-			for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+		// For loop that iterates number of law times.
+		for (int iLaw = 0; iLaw < numberOfTargets; iLaw++)
+		{
+			// Array where we gonna put all our delay for each probe.
+			double* delay = (double*)malloc(numberOfElements * sizeof(double));
+
+			// Array that contain the time for the US to go from the interface point to the flat bottom hole.
+			double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double));
+
+			// For loop that compute the time for the US to go from the interface point to the flat bottom hole.
+			for (int j = 0; j < ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)); j++)
 			{
-				// Array where we gonna put all our delay for each probe.
-				double* delay = (double*)malloc(numberOfElements * sizeof(double));
+				timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
+			}
 
-				// Array that contain the time for the US to go from the interface point to the flat bottom hole.
-				double* timeFbhInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double));
+			int nbGroupInt = (int)((interestZoneSize2 / resolution) + 1);
 
-				// For loop that compute the time for the US to go from the interface point to the flat bottom hole.
-				for (int j = 0; j < ((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1)); j++)
+			double addTimeElemIntFbh = 0; // Addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole.
+
+			// For loop that initialize each value of delay array to infinity.
+			for (int i = 0; i < numberOfElements; i++)
+			{
+				delay[i] = INFINITY;
+			}
+
+			// This variable gives us the offset between each parabola of values of interface points.
+			double offset = xIntP.size() / nbGroupInt;
+
+			// For loop that iterate number of "groups" of interface times to get the minimum value between all interface points.
+			for (int i = 0; i < nbGroupInt; i++)
+			{
+				// For loop that compute the time for the US to go from the probe element to the interface point.
+				for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
 				{
-					timeFbhInt[j] = (sqrt(pow(xFbhP[iLaw] - xIntP[j], 2.0) + pow(yFbhP[iLaw] - yIntP[j], 2.0) + pow(zFbhP[iLaw] - zIntP[j], 2.0))) / (material.velocity / 1000);
-				}
+					double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to each interface point.
 
-				int nbGroupInt = (int)((interestZoneSize2 / resolution) + 1);
+					// Computation of the time between the probe element and the first interface point.
+					timeProbeInt[0] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[0], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[0], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[0], 2.0))) / (coupling.velocity / 1000);
 
-				double addTimeElemIntFbh = 0; // Addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole.
+					// Indexes and length for the while loop below.
+					int start = (offset * i);
+					int end = (offset * (i + 1)) - 1;
+					int mid = (int)((end - start) / 2);
+					int length = 0;
 
-				// For loop that initialize each value of delay array to infinity.
-				for (int i = 0; i < numberOfElements; i++)
-				{
-					delay[i] = INFINITY;
-				}
-				
-				// This variable gives us the offset between each parabola of values of interface points.
-				double offset = xIntP.size() / nbGroupInt;
-				
-				// For loop that iterate number of "groups" of interface times to get the minimum value between all interface points.
-				for (int i = 0; i < nbGroupInt; i++)
-				{
-					// For loop that compute the time for the US to go from the probe element to the interface point.
-					for (int probeElem = 0; probeElem < numberOfElements; probeElem++)
+					// While loop the find the minimum distance by dichotomy.
+					while (length != -1)
 					{
-						double* timeProbeInt = (double*)malloc((int)((interestZoneSize2 / resolution) + 1) * (int)((interestZoneSize1 / resolution) + 1) * sizeof(double)); // Array that contain the time for the US to go from the probe element to each interface point.
+						length = end - start;
+						mid = start + (int)(length / 2);
 
-						// Computation of the time between the probe element and the first interface point.
-						timeProbeInt[0] = (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[0], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[0], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[0], 2.0))) / (coupling.velocity / 1000);
-						
-						// Indexes and length for the while loop below.
-						int start = (offset * i);
-						int end = (offset * (i + 1)) - 1;
-						int mid = (int)((end - start) / 2);
-						int length = 0;
+						if (mid == 0 || mid == xIntP.size())
+							break;
 
-						// While loop the find the minimum distance by dichotomy.
-						while (length != -1)
+						// Check if the previous time taken by the US is lower than the current.
+						if (timeFbhInt[mid - 1] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[mid - 1], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[mid - 1], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[mid - 1], 2.0))) / (coupling.velocity / 1000) <
+							timeFbhInt[mid] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[mid], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[mid], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[mid], 2.0))) / (coupling.velocity / 1000))
 						{
-							length = end - start;
-							mid = start + (int)(length / 2);
-
-							if (mid == 0 || mid == xIntP.size())
-								break;
-
-							// Check if the previous time taken by the US is lower than the current.
-							if (timeFbhInt[mid - 1] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[mid - 1], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[mid - 1], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[mid - 1], 2.0))) / (coupling.velocity / 1000) <
-								timeFbhInt[mid] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[mid], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[mid], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[mid], 2.0))) / (coupling.velocity / 1000))
-							{
-								end = mid - 1;
-							}
-
-							// If the previous time taken by the US is bigger than the current we enter in this case
-							else
-							{
-								start = mid + 1;
-							}
+							end = mid - 1;
 						}
 
-						// The addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole
-						// and convert it to mm per seconds.
-						addTimeElemIntFbh = timeFbhInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[end], 2.0))) / (coupling.velocity / 1000);
-
-						// Release of the memory taken by timeProbeInt.
-						free(timeProbeInt);
-
-						// Push addTimeElemIntFbh into delayLaw array.
-						if (delay[probeElem] > addTimeElemIntFbh)
+						// If the previous time taken by the US is bigger than the current we enter in this case
+						else
 						{
-							delay[probeElem] = addTimeElemIntFbh;
+							start = mid + 1;
 						}
 					}
+
+					// The addition of the time taken by the US between the probe element and the interface and between the interface to the flat bottom hole
+					// and convert it to mm per seconds.
+					addTimeElemIntFbh = timeFbhInt[end] + (sqrt(pow(elements.coordinates.x[probeElem] - xIntP[end], 2.0) + pow(elements.coordinates.y[probeElem] - yIntP[end], 2.0) + pow(elements.coordinates.z[probeElem] - zIntP[end], 2.0))) / (coupling.velocity / 1000);
+
+					// Release of the memory taken by timeProbeInt.
+					free(timeProbeInt);
+
+					// Push addTimeElemIntFbh into delayLaw array.
+					if (delay[probeElem] > addTimeElemIntFbh)
+					{
+						delay[probeElem] = addTimeElemIntFbh;
+					}
 				}
-				
-
-				// Get the value of remarkable x,y,z coordinates when the number of element is odd.
-				if (numberOfElements % 2 != 0) {
-					paths[iLaw].x[0] = elements.coordinates.x[numberOfElements / 2];
-					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
-					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
-
-					paths[iLaw].y[0] = elements.coordinates.y[numberOfElements / 2];
-					paths[iLaw].y[1] = coupling.height;
-					paths[iLaw].y[2] = positionProjection2[iLaw];
-
-					paths[iLaw].z[0] = elements.coordinates.z[numberOfElements / 2];
-					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
-					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
-				}
-
-				// Get the value of remarkable x,y,z coordinates when the number of element is peer.
-				else
-				{
-					paths[iLaw].x[0] = (elements.coordinates.x[numberOfElements / 2] + elements.coordinates.x[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].x[1] = tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0];
-					paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
-
-					paths[iLaw].y[0] = (elements.coordinates.y[numberOfElements / 2] + elements.coordinates.y[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].y[1] = coupling.height;
-					paths[iLaw].y[2] = positionProjection2[iLaw];
-
-					paths[iLaw].z[0] = (elements.coordinates.z[numberOfElements / 2] + elements.coordinates.z[(numberOfElements / 2) - 1]) / 2;
-					paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
-					paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
-				}
-
-				// Release the memory taken by timeFbhInt.
-				free(timeFbhInt);
-
-				// Maximum element of delay array.
-				double maxDelay = maxArray(delay, numberOfElements);
-				// For loop that push the delay law for each element of the probe
-				for (int iElem = 0; iElem < numberOfElements; iElem++)
-				{
-					laws[iLaw].delays[iElem] = maxDelay - delay[iElem];
-				}
-
-				// Release of the memory taken by delayLaw array.
-				free(delay);
 			}
+
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is odd.
+			if (numberOfElements % 2 != 0) {
+				paths[iLaw].x[0] = centerApertureX;
+				paths[iLaw].x[1] = (tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0]);
+				paths[iLaw].x[2] = (sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0];
+
+				paths[iLaw].y[0] = -centerApertureY;
+				paths[iLaw].y[1] = coupling.height + paths[iLaw].y[0];
+				paths[iLaw].y[2] = positionProjection2[iLaw];
+
+				paths[iLaw].z[0] = centerApertureZ;
+				paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+			}
+
+			// Get the value of remarkable x,y,z coordinates when the number of element is peer.
+			else
+			{
+				paths[iLaw].x[0] = centerApertureX;
+				paths[iLaw].x[1] = (tan(asin((coupling.velocity * sin(targets.tilts[iLaw])) / material.velocity)) * coupling.height + paths[iLaw].x[0]);
+				paths[iLaw].x[2] = ((sin(targets.tilts[iLaw]) * targets.positions[iLaw]) * cos(targets.skews[iLaw]) + paths[iLaw].x[0]);
+
+				paths[iLaw].y[0] = -centerApertureY;
+				paths[iLaw].y[1] = coupling.height + paths[iLaw].y[0];
+				paths[iLaw].y[2] = positionProjection2[iLaw];
+
+				paths[iLaw].z[0] = centerApertureZ;
+				paths[iLaw].z[1] = sin(targets.skews[iLaw]) * paths[iLaw].x[1];
+				paths[iLaw].z[2] = paths[iLaw].x[2] * (tan(targets.skews[iLaw]));
+			}
+
+			// Release the memory taken by timeFbhInt.
+			free(timeFbhInt);
+
+			// Maximum element of delay array.
+			double maxDelay = maxArray(delay, numberOfElements);
+			// For loop that push the delay law for each element of the probe
+			for (int iElem = 0; iElem < numberOfElements; iElem++)
+			{
+				laws[iLaw].delays[iElem] = maxDelay - delay[iElem];
+			}
+
+			// Release of the memory taken by delayLaw array.
+			free(delay);
+		}
 		#endif
 
 		// Release of the memory taken by x/y/zFbhP
@@ -917,6 +925,15 @@ int Cplate::Calculate()
 	// Release of the memory taken by positionProjection array.
 	free(positionProjection);
 	free(positionProjection2);
+
+	// Retreive original coorindates
+	if (coupling.height > 0.0)
+	{
+		for (int i = 0; i < numberOfElements; i++)
+		{
+			elements.coordinates.y[i] = -1.0*elements.coordinates.y[i] + coupling.height;
+		}
+	}
 
 	return PLUGIN_NO_ERROR;
 }

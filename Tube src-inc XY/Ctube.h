@@ -2,6 +2,9 @@
 #define CTUBE_H__
 
 #include "IPlugin.h"
+#include "unit.h"
+#include "error_codes.h"
+#include "framework.h"
 
 #include <vector>
 #include <cmath>
@@ -9,8 +12,14 @@
 
 // We include Eigen headers here, which is a library for linear algebra,
 // we use it here to manipulate matrix easily.
+// Eigen folder with all header files is in the VS project in "inc" folder.
 #include "Eigen/LU"
 #include "Eigen/Core"
+
+// Definition of PI used in the .cpp file
+#define M_PI 3.14159265358979323846
+
+# define _OPTIMIZATION
 
 class Ctube : public IPlugin
 {
@@ -49,7 +58,10 @@ private:
 
     double diameter;                // Diameter of the tube.
     double thickness;               // Thickness of the tube.
-    double tubeOffset;              // Offset of the tube.
+
+    double centerApertureX;
+    double centerApertureY;
+    double centerApertureZ;
 
     enum class DEFECT_TYPE {         // Type of defect you want to see (0 = NOTCHE, 1 = FBH)
         NOTCHE,
@@ -78,7 +90,7 @@ private:
             double coupling;        // in millimeters
         }length;
     }focal;
-    
+
 
     int numberOfTargets;            // Number of targets determines the number of laws of positions of remarkable points to calculate  
 
@@ -86,7 +98,7 @@ private:
         double* tilts;              // Defines the tilt angle for each target. In degree.
         double* skews;              // Defines the skew angle for each target. In degree.
         double* positions;
-    }TARGET, *PTARGET;
+    }TARGET, * PTARGET;
     TARGET targets;                 // List of targets whose laws and remarkable points of their routes must be calculated.
 
     typedef struct _LAW {
@@ -98,7 +110,7 @@ private:
         double x[4];                // Array of X coordinates of remarkable points (source, interface, default) for a given target. In millimeters.
         double y[4];                // Array of Y coordinates of remarkable points (source, interface, default) for a given target. In millimeters.
         double z[4];                // Array of Z coordinates of remarkable points (source, interface, default) for a given target. In millimeters.
-    }PATH, * PPATH;                 
+    }PATH, * PPATH;
     PPATH paths;                    // An array of remarkable points (source, interface, defect) for each target
 
 
@@ -108,28 +120,36 @@ private:
     double* zi3D;                   // Coordinates of the interface on Z axis.
 
     int Calculate();                                                    // Calculates laws and paths
-    double maxArray(const double *array, int size);                     // Find the max element of an array
-    double minArray(const double *array, int size);                     // Find the min element of an array
-    double *append(double *ar1, double *ar2, int len1, int len2);       // Add ar2 at the end of ar1 to form a single array
-    std::vector<double> newElipse(double skew, double alphaI);          // Ã  demander
+    double maxArray(const double* array, int size);                     // Find the max element of an array
+    double minArray(const double* array, int size);                     // Find the min element of an array
+    std::vector<double> newElipse(double skew, double alphaI);          // à demander
     std::vector<double*> fbhBuilder(double barDiameter2);
 };
 
 
 #if defined(_WINDOWS)
-    //  Microsoft
-    #define EXPORT extern "C" __declspec(dllexport)
-    #define IMPORT extern "C" __declspec(dllimport)
+//  Microsoft
+#define EXPORT extern "C" __declspec(dllexport)
+#define IMPORT extern "C" __declspec(dllimport)
 #elif defined(_LINUX)
-    //  GCC
-    #define EXPORT extern "C" __attribute__((visibility("default")))
-    #define IMPORT
+//  GCC
+#define EXPORT extern "C" __attribute__((visibility("default")))
+#define IMPORT
 #else
-    //  do nothing and hope for the best?
-    #define EXPORT
-    #define IMPORT
-    #pragma warning Unknown dynamic link import/export semantics.
+//  do nothing and hope for the best?
+#define EXPORT
+#define IMPORT
+#pragma warning Unknown dynamic link import/export semantics.
 #endif
 
+//Finally export a creation and deletion function (which you can get using LoadLibrary/GetProcAddress)
+EXPORT IPlugin* CreatePluginInstance()
+{
+    return new Ctube();
+}
+EXPORT void ReleasePluginInstance(IPlugin* p)
+{
+    p->Close();
+}
 
 #endif /* CTUBE_H__ */

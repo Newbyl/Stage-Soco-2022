@@ -2,7 +2,14 @@
 #define CPLATE_H__
 
 #include "IPlugin.h"
-#include <iostream>
+#include "unit.h"
+#include "error_codes.h"
+#include "framework.h"
+
+#include <cmath>
+#include <vector>
+
+#define _OPTIMIZATION
 
 class Cplate : public IPlugin
 {
@@ -37,9 +44,13 @@ private:
     bool opened;                    // Indicates if this class is ready to use or not.
     bool calculationDone;           // Indicates if the calculation is already done.
     int numberOfElements;           // Number of elements to calculate the laws.
-    
+
     double resolution;              // The resolution for interface points, default = 0.1mm
-    
+
+    double centerApertureX;         // x,y,z coordinates of the center of the aperture.
+    double centerApertureY;         //
+    double centerApertureZ;         //
+
     struct ELEMENTS {               // Spacial coordinates of the elements.
         struct COORDINATES {
             double* x;              // in millimeters
@@ -68,7 +79,7 @@ private:
         double* tilts;              // Defines the tilt angle for each target. In degree.
         double* skews;              // Defines the skew angle for each target. In degree.
         double* positions;          // Defines the relative position for each target. In millimeters. Depends on positionType paremeter.
-    }TARGET, *PTARGET;
+    }TARGET, * PTARGET;
     TARGET targets;                 // List of targets whose laws and remarkable points of their routes must be calculated.
 
     typedef struct _LAW {
@@ -80,30 +91,39 @@ private:
         double x[3];                // Array of X coordinates of remarkable points (source, interface, default) for a given target. In millimeters.
         double y[3];                // Array of Y coordinates of remarkable points (source, interface, default) for a given target. In millimeters.
         double z[3];                // Array of Z coordinates of remarkable points (source, interface, default) for a given target. In millimeters.
-    }PATH, * PPATH;                 
+    }PATH, * PPATH;
     PPATH paths;                    // An array of remarkable points (source, interface, defect) for each target
 
-    int Calculate();                // Calculates laws and paths
-    double maxArray(double *array, int size);   // Find the maximum element of an array
-    double minArray(double *array, int size);   // Find the minimum element of an array
+    int Calculate();                                    // Calculates laws and paths
+    double maxArray(double* array, int size);           // Find the maximum element of an array
+    double minArray(double* array, int size);           // Find the minimum element of an array
     int minArrayIndex(const double* array, int size);   // find the index of the minimum element of an array
 };
 
 
 #if defined(_WINDOWS)
-    //  Microsoft
-    #define EXPORT extern "C" __declspec(dllexport)
-    #define IMPORT extern "C" __declspec(dllimport)
+//  Microsoft
+#define EXPORT extern "C" __declspec(dllexport)
+#define IMPORT extern "C" __declspec(dllimport)
 #elif defined(_LINUX)
-    //  GCC
-    #define EXPORT extern "C" __attribute__((visibility("default")))
-    #define IMPORT
+//  GCC
+#define EXPORT extern "C" __attribute__((visibility("default")))
+#define IMPORT
 #else
-    //  do nothing and hope for the best?
-    #define EXPORT
-    #define IMPORT
-    #pragma warning Unknown dynamic link import/export semantics.
+//  do nothing and hope for the best?
+#define EXPORT
+#define IMPORT
+#pragma warning Unknown dynamic link import/export semantics.
 #endif
 
+//Finally export a creation and deletion function (which you can get using LoadLibrary/GetProcAddress)
+EXPORT IPlugin* CreatePluginInstance()
+{
+    return new Cplate();
+}
+EXPORT void ReleasePluginInstance(IPlugin* p)
+{
+    p->Close();
+}
 
 #endif /* CPLATE_H__ */
